@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZK Bridge — Documentation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg: #ffffff; --side: #f8fafc; --text: #1e293b; --text-2: #475569; --text-3: #94a3b8;
+    --border: #e2e8f0; --primary: #2563eb; --primary-bg: #eff6ff; --code-bg: #0f172a; --code-text: #e2e8f0;
+    --note: #fffbeb; --note-border: #f59e0b; --tip: #ecfdf5; --tip-border: #10b981; --warn: #fef2f2; --warn-border: #ef4444;
+  }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--text); background: var(--bg); line-height: 1.65; font-size: 15px; }
+  .layout { display: flex; min-height: 100vh; }
+  nav { width: 270px; flex-shrink: 0; background: var(--side); border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 24px 0; }
+  nav .brand { padding: 0 24px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  nav .brand b { font-size: 18px; display: block; }
+  nav .brand span { font-size: 12px; color: var(--text-3); }
+  nav a { display: block; padding: 5px 24px; color: var(--text-2); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; }
+  nav a:hover { color: var(--primary); background: var(--primary-bg); }
+  nav a.sub { padding-left: 40px; font-size: 13px; }
+  nav .group { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); padding: 14px 24px 4px; }
+  main { flex: 1; min-width: 0; padding: 40px 56px 80px; max-width: 980px; }
+  h1 { font-size: 34px; margin: 0 0 8px; letter-spacing: -.02em; }
+  h2 { font-size: 24px; margin: 56px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); letter-spacing: -.01em; }
+  h3 { font-size: 18px; margin: 32px 0 8px; }
+  h4 { font-size: 15px; margin: 20px 0 6px; }
+  p, li { color: var(--text-2); }
+  a { color: var(--primary); }
+  code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; color: #0f172a; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 16px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+  pre code { background: none; padding: 0; color: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--side); font-weight: 600; color: var(--text); }
+  td { color: var(--text-2); }
+  .lead { font-size: 17px; color: var(--text-2); max-width: 720px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--text-3); margin: 16px 0 0; }
+  .meta b { color: var(--text-2); }
+  .box { border-left: 4px solid; border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+  .box p { margin: 4px 0; }
+  .box.note { background: var(--note); border-color: var(--note-border); }
+  .box.tip { background: var(--tip); border-color: var(--tip-border); }
+  .box.warn { background: var(--warn); border-color: var(--warn-border); }
+  .box b:first-child { color: var(--text); }
+  figure { margin: 16px 0 24px; }
+  figure img { width: 100%; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 2px 10px rgba(15,23,42,.06); }
+  figcaption { font-size: 13px; color: var(--text-3); margin-top: 6px; text-align: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+  .feature { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .feature b { display: block; color: var(--text); font-size: 14px; }
+  .feature span { font-size: 13px; color: var(--text-2); }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps > li { counter-increment: s; position: relative; padding: 0 0 12px 40px; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .flow { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 20px 0; font-size: 14px; }
+  .flow div { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; text-align: center; background: var(--side); }
+  .flow div b { display: block; color: var(--text); }
+  .flow div span { font-size: 12px; color: var(--text-3); }
+  .flow i { font-style: normal; color: var(--text-3); font-size: 13px; text-align: center; }
+  kbd { font-family: inherit; font-size: 12px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-3); }
+  .menu-btn { display: none; }
+  @media (max-width: 900px) {
+    nav { position: fixed; z-index: 20; left: -280px; transition: left .2s; box-shadow: 0 0 30px rgba(0,0,0,.15); }
+    nav.open { left: 0; }
+    main { padding: 64px 16px 60px; }
+    .menu-btn { display: block; position: fixed; top: 12px; left: 12px; z-index: 30; border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 6px 12px; font-size: 14px; }
+    .grid2, .features { grid-template-columns: 1fr; }
+    table { display: block; overflow-x: auto; }
+    td code { word-break: break-word; }
+  }
+  @media print { nav, .menu-btn { display: none; } main { padding: 0; max-width: none; } h2 { break-before: page; } pre { white-space: pre-wrap; } }
+</style>
+</head>
+<body>
+<button class="menu-btn" onclick="document.querySelector('nav').classList.toggle('open')">☰ Contents</button>
+<div class="layout">
+<nav onclick="if (event.target.tagName === 'A') this.classList.remove('open')">
+  <div class="brand"><b>ZK Bridge</b><span>Documentation · v1.0.0</span></div>
+  <div class="group">Getting started</div>
+  <a href="#introduction">Introduction</a>
+  <a href="#requirements">Requirements</a>
+  <a href="#installation">Installation</a>
+  <a class="sub" href="#install-windows">Windows</a>
+  <a class="sub" href="#install-linux">Linux</a>
+  <a class="sub" href="#setup-wizard">Setup wizard</a>
+  <a href="#background">Run in the background</a>
+  <div class="group">Connecting</div>
+  <a href="#devices">Connecting devices</a>
+  <a class="sub" href="#adms">ADMS (push) devices</a>
+  <a class="sub" href="#tcp">TCP/IP (pull) devices</a>
+  <a class="sub" href="#firewall">Firewall</a>
+  <a href="#erp">ERP integration</a>
+  <a class="sub" href="#erp-employees">GET employees</a>
+  <a class="sub" href="#erp-attendance">POST attendance</a>
+  <a class="sub" href="#erp-laravel">Laravel example</a>
+  <div class="group">Using the app</div>
+  <a href="#dashboard">Dashboard</a>
+  <a href="#employees">Employees</a>
+  <a href="#attendance">Attendance</a>
+  <a href="#schedule">Sync schedule</a>
+  <a href="#users">Users, roles &amp; permissions</a>
+  <a href="#branding">Branding (white-label)</a>
+  <a href="#logs">Logs</a>
+  <div class="group">Reference</div>
+  <a href="#configuration">Configuration (.env)</a>
+  <a href="#data">Where data is stored</a>
+  <a href="#updating">Updating</a>
+  <a href="#troubleshooting">Troubleshooting &amp; FAQ</a>
+  <a href="#changelog">Changelog</a>
+  <a href="#credits">Credits</a>
+  <a href="#support">Support</a>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="introduction">
+  <h1>ZK Bridge</h1>
+  <p class="lead">Connect ZKTeco attendance devices to your ERP, HRM or payroll system. ZK Bridge collects punches from your devices in real time, sends them to your ERP's API, and keeps employee lists on the devices in sync.</p>
+  <div class="meta">
+    <span><b>Version</b> 1.0.0</span>
+    <span><b>Platforms</b> Windows · Linux</span>
+    <span><b>Requires</b> Node.js 20+</span>
+    <span><b>Author</b> <a href="https://mestiaque.com" target="_blank" rel="noopener">M. Estiaque</a></span>
+  </div>
+
+  <p>Thank you for purchasing ZK Bridge. This guide covers everything from installation to connecting your first device. If you have a question that is not answered here, see <a href="#support">Support</a>.</p>
+
+  <h3>How it works</h3>
+  <div class="flow">
+    <div><b>ZKTeco devices</b><span>ADMS push or TCP/IP</span></div>
+    <i>attendance →<br>← employees</i>
+    <div><b>ZK Bridge</b><span>runs on a PC/server in your office</span></div>
+    <i>REST API (JSON) →<br>← employee list</i>
+    <div><b>Your ERP</b><span>any language / framework</span></div>
+  </div>
+  <p>ZK Bridge runs on a computer in the same network as your devices. Your ERP can be anywhere, including the cloud, because the bridge only makes outgoing HTTPS requests to it. Your ERP needs just three small API endpoints (see <a href="#erp">ERP integration</a>).</p>
+
+  <h3>Features</h3>
+  <div class="features">
+    <div class="feature"><b>Real-time ADMS push</b><span>Newer devices send every punch the moment it happens.</span></div>
+    <div class="feature"><b>TCP/IP pull</b><span>Older devices without ADMS are read over the network.</span></div>
+    <div class="feature"><b>Two-way ERP sync</b><span>Employees from ERP → devices, attendance from devices → ERP.</span></div>
+    <div class="feature"><b>Automatic schedules</b><span>Sync employees and push attendance on a timetable you choose.</span></div>
+    <div class="feature"><b>Live dashboard</b><span>Devices, punches and sync history update live in the browser.</span></div>
+    <div class="feature"><b>Employee management</b><span>Add, edit and delete users on devices; export CSV and user.dat.</span></div>
+    <div class="feature"><b>Users &amp; roles</b><span>Multiple accounts with fine-grained, server-enforced permissions.</span></div>
+    <div class="feature"><b>White-label</b><span>Your app name, logo, colors and company name.</span></div>
+    <div class="feature"><b>Setup wizard</b><span>Browser-based first-run setup; no config files to edit.</span></div>
+    <div class="feature"><b>Runs as a service</b><span>Starts with Windows or Linux and restarts itself if it stops.</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="requirements">
+  <h2>Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Operating system</td><td>Windows 10 / 11 / Server 2016+, or Linux (Ubuntu 20.04+, Debian 11+, or any systemd distro). macOS works for testing.</td></tr>
+    <tr><td>Node.js</td><td>Version <b>20 or newer</b> (the LTS version from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> is recommended).</td></tr>
+    <tr><td>Hardware</td><td>Any PC or small server that stays on. 1 CPU core and 512 MB free RAM are enough for dozens of devices.</td></tr>
+    <tr><td>Network</td><td>The computer must be reachable from your ZKTeco devices (same LAN or VPN), and must be able to reach your ERP's API.</td></tr>
+    <tr><td>Devices</td><td>ZKTeco devices with <b>ADMS / Cloud Server</b> support (push) or the standard <b>TCP/IP port 4370</b> (pull).</td></tr>
+    <tr><td>ERP</td><td>Any system that can expose 3 HTTP JSON endpoints. Optional for first tests.</td></tr>
+  </table>
+  <div class="box note"><p><b>Shared hosting is not supported.</b> ZK Bridge is a long-running Node.js program that devices connect to, so it needs a PC, VPS or server where you can run programs — usually a computer in the same office as the devices.</p></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="installation">
+  <h2>Installation</h2>
+  <p>Unzip the package to a permanent folder, for example <code>C:\zk-bridge</code> on Windows or <code>/opt/zk-bridge</code> on Linux. Avoid folders that sync to the cloud (OneDrive, Dropbox).</p>
+
+  <h3 id="install-windows">Windows</h3>
+  <ol class="steps">
+    <li>Install <b>Node.js 20 LTS or newer</b> from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> (keep the default options).</li>
+    <li>Open the ZK Bridge folder and double-click <code>start.bat</code>. The first time, it installs the dependencies (about a minute), starts the server and opens your browser.</li>
+    <li>Complete the <a href="#setup-wizard">setup wizard</a> in the browser.</li>
+    <li>For permanent use, install it as a Windows service — see <a href="#background">Run in the background</a>.</li>
+  </ol>
+  <p>Prefer the command line? Open <b>Command Prompt</b> in the folder and run:</p>
+<pre><code>npm install
+npm start</code></pre>
+  <p>Then open <a href="http://localhost:3000">http://localhost:3000</a>.</p>
+
+  <h3 id="install-linux">Linux</h3>
+  <ol class="steps">
+    <li>Install Node.js 20 or newer. On Ubuntu/Debian:
+<pre><code>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v</code></pre></li>
+    <li>In the ZK Bridge folder, run:
+<pre><code>npm install
+npm start</code></pre></li>
+    <li>Open <code>http://&lt;server-ip&gt;:3000</code> in a browser and complete the <a href="#setup-wizard">setup wizard</a>.</li>
+    <li>For permanent use, run <code>./install-service.sh</code> — see <a href="#background">Run in the background</a>.</li>
+  </ol>
+  <div class="box tip"><p><b>Tip:</b> <code>npm install</code> also creates the <code>.env</code> file, the <code>data/</code> and <code>logs/</code> folders, and a random session secret. You never need to copy or edit config files by hand.</p></div>
+
+  <h3 id="setup-wizard">Setup wizard</h3>
+  <p>The first time you open ZK Bridge in a browser, a four-step setup wizard appears:</p>
+  <div class="grid2">
+    <figure><img src="images/install-1.png" alt="Setup wizard: system check"><figcaption>1. System check</figcaption></figure>
+    <figure><img src="images/install-2.png" alt="Setup wizard: administrator account"><figcaption>2. Administrator account</figcaption></figure>
+    <figure><img src="images/install-3.png" alt="Setup wizard: ERP connection"><figcaption>3. ERP connection (optional)</figcaption></figure>
+    <figure><img src="images/install-4.png" alt="Setup wizard: branding and ADMS port"><figcaption>4. App name &amp; ADMS port</figcaption></figure>
+  </div>
+  <ol>
+    <li><b>System check</b> — confirms the Node.js version and that the app can write to its folders.</li>
+    <li><b>Administrator account</b> — the first user, with full access. The password must be at least 8 characters.</li>
+    <li><b>ERP connection</b> — your API base URL and optional bearer token. Use <b>Test Connection</b> to check it, or <b>Skip</b> and set it later in Settings.</li>
+    <li><b>App name &amp; ADMS port</b> — the name shown in the app, your company name, and the port devices push to (default <code>7788</code>).</li>
+  </ol>
+  <p>When you click <b>Finish Setup</b> you are signed in, and the last screen shows the address and port to enter on your devices.</p>
+  <figure><img src="images/install-5.png" alt="Setup complete"><figcaption>The final screen shows what to enter on ADMS devices.</figcaption></figure>
+  <div class="box note"><p>The wizard can only run once. After setup, the <code>/install</code> page is closed permanently.</p></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="background">
+  <h2>Run in the background</h2>
+  <p>For daily use, install ZK Bridge as a <b>service</b>. It then starts automatically when the computer boots, runs without anyone logged in, and restarts itself if it ever stops.</p>
+  <table>
+    <tr><th></th><th>Windows</th><th>Linux (systemd)</th></tr>
+    <tr><td>Install service</td><td>Double-click <code>install-service.bat</code> (asks for Administrator rights)</td><td><code>./install-service.sh</code> (asks for sudo)</td></tr>
+    <tr><td>Remove service</td><td><code>uninstall-service.bat</code></td><td><code>./uninstall-service.sh</code></td></tr>
+    <tr><td>Status</td><td><code>npm run service:status</code> or Windows <b>Services</b> (“ZK Bridge”)</td><td><code>systemctl status zk-bridge</code></td></tr>
+    <tr><td>Service logs</td><td><code>src\daemon\*.log</code></td><td><code>journalctl -u zk-bridge -f</code></td></tr>
+  </table>
+
+  <h3>Start / stop scripts</h3>
+  <p>For quick, manual use there are one-click scripts:</p>
+  <table>
+    <tr><th>Windows</th><th>Linux</th><th>What it does</th></tr>
+    <tr><td><code>start.bat</code></td><td><code>./start.sh</code></td><td>Installs dependencies if needed, starts the server in the background and opens the browser. If the service is installed, it just makes sure it is running.</td></tr>
+    <tr><td><code>stop.bat</code></td><td><code>./stop.sh</code></td><td>Stops the server.</td></tr>
+    <tr><td><code>ZK-Bridge.vbs</code></td><td>—</td><td>Same as <code>start.bat</code> but without a console window.</td></tr>
+  </table>
+  <div class="box tip"><p><b>Using PM2?</b> If <a href="https://pm2.keymetrics.io" target="_blank" rel="noopener">PM2</a> is installed globally, the start scripts use it automatically (<code>ecosystem.config.js</code> is included).</p></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="devices">
+  <h2>Connecting devices</h2>
+  <p>ZK Bridge supports two connection types. Use <b>ADMS</b> whenever your device supports it — punches arrive instantly and the device does not need a fixed IP.</p>
+  <figure><img src="images/devices.png" alt="Devices page"><figcaption>Devices page: add TCP/IP devices, see the ADMS address, and test network reachability.</figcaption></figure>
+
+  <h3 id="adms">ADMS (push) devices</h3>
+  <ol class="steps">
+    <li>Find the IP address of the computer running ZK Bridge. It is shown on the <b>Devices</b> page under <b>ADMS Push Server</b>, and on the last screen of the setup wizard.</li>
+    <li>On the device, open <b>Menu → COMM → Cloud Server Setting</b> (on some models: <b>Menu → Comm → ADMS</b>).</li>
+    <li>Set <b>Server Address</b> to the computer's IP (for example <code>192.168.1.10</code>) and <b>Server Port</b> to the ADMS port (default <code>7788</code>). Turn <b>Enable Domain Name</b> and <b>Proxy</b> off.</li>
+    <li>Save and restart the device. Within a minute it appears on the <b>Devices</b> page with status <i>connected</i>.</li>
+  </ol>
+  <div class="box warn"><p><b>Do not use <code>localhost</code> or <code>127.0.0.1</code></b> on the device — that points to the device itself. Use the computer's LAN IP, and give that computer a fixed IP (DHCP reservation) so devices can always find it.</p></div>
+  <p>You can change the ADMS port any time in <b>Settings → ADMS Server Info</b>. The change applies immediately; remember to update the port on each device.</p>
+
+  <h3 id="tcp">TCP/IP (pull) devices</h3>
+  <p>Older devices without ADMS are connected from the bridge side:</p>
+  <ol class="steps">
+    <li>Give the device a fixed IP address (<b>Menu → COMM → Ethernet</b>).</li>
+    <li>On the <b>Devices</b> page, use <b>Network Ping Test</b> to check that the bridge can reach it.</li>
+    <li>Under <b>Add TCP/IP Device</b>, enter the IP, port (default <code>4370</code>), a name, and the device communication password if one is set. Click <b>Connect Device</b>.</li>
+    <li>Use <b>Attendance → Fetch TCP</b>, or <b>Sync Now</b> on the dashboard, to read punches from the device.</li>
+  </ol>
+
+  <h3 id="firewall">Firewall</h3>
+  <p>Devices must be able to reach the ADMS port, and browsers the web port. Allow both on the computer running ZK Bridge.</p>
+  <h4>Windows (run as Administrator)</h4>
+<pre><code>netsh advfirewall firewall add rule name="ZK Bridge" dir=in action=allow protocol=TCP localport=3000,7788</code></pre>
+  <h4>Linux (ufw)</h4>
+<pre><code>sudo ufw allow 3000/tcp
+sudo ufw allow 7788/tcp</code></pre>
+  <p>Replace <code>3000</code> and <code>7788</code> if you changed the ports.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="erp">
+  <h2>ERP integration</h2>
+  <p>ZK Bridge talks to your ERP through a small JSON API that you add to your system. It works with any language or framework — Laravel, CodeIgniter, Django, ASP.NET, Node.js and so on.</p>
+  <table>
+    <tr><th>Method</th><th>Path (under your API base URL)</th><th>Purpose</th></tr>
+    <tr><td><code>GET</code></td><td><code>/zk/ping</code></td><td>Connection test (Settings → Test Connection)</td></tr>
+    <tr><td><code>GET</code></td><td><code>/zk/employees</code></td><td>Employee list to put on the devices</td></tr>
+    <tr><td><code>POST</code></td><td><code>/zk/attendance</code></td><td>Receives attendance punches</td></tr>
+  </table>
+  <p>With base URL <code>https://erp.example.com/api</code>, the bridge calls <code>https://erp.example.com/api/zk/employees</code> and so on. If your routes are different, enter full URLs in <b>Settings → Fetch Employee URL</b> and <b>Sync Attendance URL</b>; these override the default paths.</p>
+  <h4>Authentication</h4>
+  <p>If you set an <b>API Token</b>, every request includes <code>Authorization: Bearer &lt;token&gt;</code>. Requests also send <code>Accept: application/json</code>. Use HTTPS when your ERP is on the internet.</p>
+  <h4>Ping</h4>
+  <p>Any <code>2xx</code> response means success. An optional <code>message</code> is shown to the user:</p>
+<pre><code>{ "message": "pong" }</code></pre>
+
+  <h3 id="erp-employees">GET /zk/employees</h3>
+  <p>Return a JSON array, or an object with the array in <code>data</code>:</p>
+<pre><code>{
+  "data": [
+    { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0, "password": "" },
+    { "uid": 2, "employee_id": "1002", "name": "Tanvir Hasan",  "privilege": 0 }
+  ]
+}</code></pre>
+  <table>
+    <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+    <tr><td><code>uid</code></td><td>Yes</td><td>Numeric user slot on the device, <b>1–65535</b>, unique and stable for each employee. If missing, the bridge uses the numeric part of <code>id</code>, <code>employee_id</code> or <code>pin</code>.</td></tr>
+    <tr><td><code>employee_id</code></td><td>Recommended</td><td>The ID (PIN) employees use on the device and that comes back in attendance as <code>employeeId</code>. Falls back to <code>pin</code>, <code>card_no</code>, then <code>uid</code>.</td></tr>
+    <tr><td><code>name</code></td><td>Recommended</td><td>Display name (devices show up to 24 characters). You may send <code>first_name</code> + <code>last_name</code> instead.</td></tr>
+    <tr><td><code>privilege</code></td><td>No</td><td><code>0</code> = normal user (default), <code>14</code> = device administrator.</td></tr>
+    <tr><td><code>password</code></td><td>No</td><td>Device keypad password, if employees punch with a PIN code.</td></tr>
+  </table>
+
+  <h3 id="erp-attendance">POST /zk/attendance</h3>
+  <p>The bridge sends all records that have not been delivered yet in one request, as <code>{ "records": [...] }</code>:</p>
+<pre><code>{
+  "records": [
+    {
+      "deviceId": "CQZ7224460123",
+      "employeeId": "1001",
+      "time": "2026-10-10 08:42:04",
+      "status": "0",
+      "verify": "1",
+      "verifyMethod": "fingerprint",
+      "workCode": "0",
+      "source": "adms",
+      "receivedAt": "2026-10-10T02:42:05.120Z"
+    }
+  ]
+}</code></pre>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td><code>employeeId</code></td><td>The employee's ID/PIN on the device (your <code>employee_id</code>).</td></tr>
+    <tr><td><code>time</code></td><td>Punch time in the <b>device's local time</b>, <code>YYYY-MM-DD HH:MM:SS</code>.</td></tr>
+    <tr><td><code>status</code></td><td>Punch state: <code>0</code> Check-In, <code>1</code> Check-Out, <code>2</code> Break-Out, <code>3</code> Break-In, <code>4</code> Overtime-In, <code>5</code> Overtime-Out.</td></tr>
+    <tr><td><code>deviceId</code></td><td>Device serial number (ADMS) or <code>ip:port</code> (TCP/IP).</td></tr>
+    <tr><td><code>source</code></td><td><code>adms</code> or <code>tcp</code>.</td></tr>
+    <tr><td><code>verify</code>, <code>verifyMethod</code></td><td>ADMS only: how the employee verified (<code>fingerprint</code>, <code>face</code>, <code>card</code>, <code>password</code>).</td></tr>
+    <tr><td><code>workCode</code></td><td>ADMS only: work code entered on the device, if any.</td></tr>
+  </table>
+  <p>Reply with any <code>2xx</code> status. Optionally return how many were saved: <code>{ "saved": 12 }</code>. If the request fails or returns an error status, the records stay marked as <i>New</i> and are sent again on the next push.</p>
+  <div class="box tip"><p><b>Make the endpoint idempotent.</b> A record can be sent twice (for example after a network timeout), so store punches with a unique key on <code>employeeId + time + deviceId</code> and ignore duplicates — as in the example below.</p></div>
+
+  <h3 id="erp-laravel">Laravel example</h3>
+  <p><code>routes/api.php</code></p>
+<pre><code>use App\Http\Controllers\ZKController;
+
+Route::middleware('auth:sanctum')->prefix('zk')->group(function () {
+    Route::get('/ping',        [ZKController::class, 'ping']);
+    Route::get('/employees',   [ZKController::class, 'employees']);
+    Route::post('/attendance', [ZKController::class, 'storeAttendance']);
+});</code></pre>
+  <p><code>app/Http/Controllers/ZKController.php</code></p>
+<pre><code>&lt;?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Attendance;
+use App\Models\Employee;
+use Illuminate\Http\Request;
+
+class ZKController extends Controller
+{
+    public function ping()
+    {
+        return response()->json(['message' => 'pong']);
+    }
+
+    public function employees()
+    {
+        $employees = Employee::where('active', true)->get()->map(fn ($e) => [
+            'uid'         => $e->id,            // 1-65535, stable per employee
+            'employee_id' => $e->employee_code, // ID used on the device
+            'name'        => $e->name,
+            'privilege'   => 0,
+        ]);
+
+        return response()->json(['data' => $employees]);
+    }
+
+    public function storeAttendance(Request $request)
+    {
+        $saved = 0;
+
+        foreach ($request->input('records', []) as $r) {
+            Attendance::firstOrCreate(
+                [
+                    'employee_code' => $r['employeeId'],
+                    'punch_time'    => $r['time'],
+                    'device_id'     => $r['deviceId'],
+                ],
+                [
+                    'status' => $r['status'] ?? '0',
+                    'source' => $r['source'] ?? 'zk',
+                ]
+            );
+            $saved++;
+        }
+
+        return response()->json(['saved' => $saved]);
+    }
+}</code></pre>
+  <p>Create a token for the bridge with <code>$user-&gt;createToken('zk-bridge')-&gt;plainTextToken</code> and paste it into <b>Settings → API Token</b>.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="dashboard">
+  <h2>Dashboard</h2>
+  <figure><img src="images/dashboard.png" alt="Dashboard"><figcaption>The dashboard updates live as devices connect and employees punch.</figcaption></figure>
+  <p>At a glance: number of devices and how many are connected, attendance records collected, the last sync time, connected devices, the latest punches and the sync history. <b>Sync Now</b> (top right) fetches from TCP/IP devices and pushes all new records to your ERP immediately. The status lights at the bottom left show whether the ERP API and the ADMS server are reachable.</p>
+</section>
+
+<section id="employees">
+  <h2>Employees</h2>
+  <figure><img src="images/employees.png" alt="Employees page"><figcaption>The bridge keeps its own employee list and syncs it to devices.</figcaption></figure>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><b>Load from ERP</b></td><td>Imports the employee list from your ERP's <code>/zk/employees</code>.</td></tr>
+    <tr><td><b>Load from Machine</b></td><td>Reads the users currently stored on a connected ADMS device.</td></tr>
+    <tr><td><b>Set to Device</b></td><td>Sends employees that are not on the devices yet (<i>Not Synced</i>) to all connected devices. ADMS devices pick the change up within about 30 seconds.</td></tr>
+    <tr><td><b>+ Add Employee</b> / Edit / Delete</td><td>Manage a single employee; the change is sent to connected devices. Fingerprints and faces already enrolled on the device are kept when you edit a name.</td></tr>
+    <tr><td><b>CSV</b> / <b>DAT</b></td><td>Export for ZKTeco desktop software (CSV) or for USB-drive import on the device (<code>user.dat</code>).</td></tr>
+  </table>
+  <p>Enrol fingerprints, faces and cards on the device itself as usual; the bridge manages names, IDs and privileges.</p>
+</section>
+
+<section id="attendance">
+  <h2>Attendance</h2>
+  <figure><img src="images/attendance.png" alt="Attendance page"><figcaption>All punches from all devices, with filters by employee, date, device, type, method, source and status.</figcaption></figure>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><b>Fetch TCP</b></td><td>Reads punches from connected TCP/IP devices, optionally limited to the <b>From</b>/<b>To</b> dates.</td></tr>
+    <tr><td><b>Fetch ADMS</b></td><td>Asks ADMS devices to upload their stored history (useful after first connecting a device that already has punches).</td></tr>
+    <tr><td><b>Push to ERP</b></td><td>Sends all records with status <i>New</i> to your ERP now. Delivered records show the time in <b>Pushed At</b>.</td></tr>
+  </table>
+  <p>Duplicate punches (same employee, time and device) are ignored automatically.</p>
+</section>
+
+<section id="schedule">
+  <h2>Sync schedule</h2>
+  <figure><img src="images/settings.png" alt="Settings page"><figcaption>Settings: ERP connection, automatic schedules and ADMS server.</figcaption></figure>
+  <p>In <b>Settings → Sync Schedule</b> you can turn on two automatic jobs and set how often they run:</p>
+  <ul>
+    <li><b>Employee Sync</b> — imports employees from the ERP and sends new ones to the devices.</li>
+    <li><b>Attendance Push</b> — sends new attendance records (from ADMS devices and earlier TCP/IP fetches) to the ERP.</li>
+  </ul>
+  <p>Use the preset buttons, or type a cron expression:</p>
+  <table>
+    <tr><th>Expression</th><th>Runs</th></tr>
+    <tr><td><code>*/5 * * * *</code></td><td>Every 5 minutes</td></tr>
+    <tr><td><code>*/15 * * * *</code></td><td>Every 15 minutes</td></tr>
+    <tr><td><code>0 * * * *</code></td><td>Every hour, on the hour</td></tr>
+    <tr><td><code>0 6,18 * * *</code></td><td>Every day at 06:00 and 18:00</td></tr>
+  </table>
+  <p>Times use the clock of the computer running ZK Bridge. Changes apply immediately without a restart.</p>
+</section>
+
+<section id="users">
+  <h2>Users, roles &amp; permissions</h2>
+  <figure><img src="images/users.png" alt="User management"><figcaption>Manage Users: accounts and roles.</figcaption></figure>
+  <p>Open <b>Manage Users</b> at the bottom of the sidebar (superadmin only). Three roles are built in:</p>
+  <table>
+    <tr><th>Role</th><th>Access</th></tr>
+    <tr><td><b>superadmin</b></td><td>Everything, including users, permissions and branding. Cannot be edited or removed by an admin.</td></tr>
+    <tr><td><b>admin</b></td><td>Everything in the app except user management, interface permissions and branding.</td></tr>
+    <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the user guide.</td></tr>
+  </table>
+  <p>You can create your own roles and choose exactly which pages and buttons each role may use. Permissions are enforced by the server, not only hidden in the interface.</p>
+  <div class="box note"><p><b>Security:</b> after 5 wrong passwords for the same account, sign-in from that computer is blocked for 15 minutes. Passwords are stored as bcrypt hashes.</p></div>
+</section>
+
+<section id="branding">
+  <h2>Branding (white-label)</h2>
+  <figure><img src="images/branding.png" alt="Branding settings"><figcaption>Settings → Branding (superadmin only).</figcaption></figure>
+  <p>Change how ZK Bridge looks for your users or your clients:</p>
+  <ul>
+    <li><b>App name</b> and <b>tagline</b> — shown in the sidebar, login page and browser tab.</li>
+    <li><b>Logo</b> — PNG, JPG, WEBP or SVG up to 1 MB; also used as the browser icon. <b>Use Default</b> restores the original.</li>
+    <li><b>Primary color</b> — buttons, links and highlights.</li>
+    <li><b>Company name</b> and <b>website</b> — shown in the footer.</li>
+  </ul>
+</section>
+
+<section id="logs">
+  <h2>Logs</h2>
+  <figure><img src="images/logs.png" alt="Logs page"><figcaption>Server log and sync history.</figcaption></figure>
+  <p>The <b>Logs</b> page shows the latest server messages — device connections, every ADMS request, sync results and errors. It is the first place to look when a device does not appear or a sync fails. Log files are kept in the <code>logs/</code> folder and rotated automatically (5 × 5 MB).</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="configuration">
+  <h2>Configuration (.env)</h2>
+  <p>Most settings are managed from the app. The <code>.env</code> file in the main folder holds the rest; restart ZK Bridge after editing it.</p>
+  <table>
+    <tr><th>Key</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>PORT</code></td><td><code>3000</code></td><td>Web interface port.</td></tr>
+    <tr><td><code>HOST</code></td><td><code>0.0.0.0</code></td><td>Listen address. <code>127.0.0.1</code> allows browser access from this computer only (devices use the separate ADMS port).</td></tr>
+    <tr><td><code>ADMS_PORT</code></td><td><code>7788</code></td><td>Port ADMS devices push to. Also editable in Settings.</td></tr>
+    <tr><td><code>LARAVEL_API_URL</code></td><td>—</td><td>ERP API base URL (Settings → ERP API Base URL).</td></tr>
+    <tr><td><code>LARAVEL_API_TOKEN</code></td><td>—</td><td>Bearer token for the ERP API.</td></tr>
+    <tr><td><code>FETCH_EMPLOYEE_URL</code></td><td>—</td><td>Full URL overriding <code>/zk/employees</code>.</td></tr>
+    <tr><td><code>SYNC_ATTENDANCE_URL</code></td><td>—</td><td>Full URL overriding <code>/zk/attendance</code>.</td></tr>
+    <tr><td><code>SYNC_SCHEDULE</code></td><td><code>*/30 * * * *</code></td><td>Employee sync schedule (cron).</td></tr>
+    <tr><td><code>ATTENDANCE_FETCH_SCHEDULE</code></td><td><code>*/15 * * * *</code></td><td>Attendance push schedule (cron).</td></tr>
+    <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td><code>error</code>, <code>warn</code>, <code>info</code> or <code>debug</code>.</td></tr>
+    <tr><td><code>SESSION_SECRET</code></td><td>random</td><td>Signs login sessions. Created automatically; keep it private.</td></tr>
+    <tr><td><code>MASTER_USERNAME</code> / <code>MASTER_PASSWORD</code></td><td>empty</td><td>Optional emergency login — see <a href="#forgot-password">Forgot password</a>. Leave empty in normal use.</td></tr>
+  </table>
+  <p>The <code>LARAVEL_</code> names are kept for compatibility; they work with any ERP.</p>
+</section>
+
+<section id="data">
+  <h2>Where data is stored</h2>
+  <table>
+    <tr><th>Path</th><th>Contents</th></tr>
+    <tr><td><code>.env</code></td><td>Ports, ERP connection, schedules, session secret.</td></tr>
+    <tr><td><code>data/users.json</code>, <code>data/roles.json</code></td><td>User accounts (hashed passwords) and roles.</td></tr>
+    <tr><td><code>data/employees.json</code></td><td>The bridge's employee list.</td></tr>
+    <tr><td><code>data/config.json</code>, <code>data/permissions.json</code></td><td>Schedule switches and interface permissions.</td></tr>
+    <tr><td><code>data/branding.json</code>, <code>data/branding/</code></td><td>Branding settings and uploaded logo.</td></tr>
+    <tr><td><code>data/installed.json</code></td><td>Marks setup as completed.</td></tr>
+    <tr><td><code>logs/</code></td><td>Log files.</td></tr>
+  </table>
+  <p><b>Back up <code>.env</code> and the <code>data/</code> folder</b> regularly; together they are a complete backup of your installation.</p>
+</section>
+
+<section id="updating">
+  <h2>Updating</h2>
+  <ol class="steps">
+    <li>Stop ZK Bridge (<code>stop.bat</code> / <code>./stop.sh</code>), or stop the service.</li>
+    <li>Back up <code>.env</code> and the <code>data/</code> folder.</li>
+    <li>Extract the new version over the old folder. Your <code>.env</code> and <code>data/</code> are not part of the package, so they are kept.</li>
+    <li>Run <code>npm install</code>, then start ZK Bridge again (or start the service).</li>
+  </ol>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="troubleshooting">
+  <h2>Troubleshooting &amp; FAQ</h2>
+
+  <h4>The device does not appear on the Devices page</h4>
+  <ul>
+    <li>Check the server address on the device is the computer's <b>LAN IP</b> (not <code>localhost</code>) and the port matches <b>Settings → ADMS Port</b>.</li>
+    <li>Allow the ADMS port in the <a href="#firewall">firewall</a>.</li>
+    <li>From the Devices page, ping the device's IP. If the ping fails, the device and computer are not on a reachable network.</li>
+    <li>Restart the device after changing its settings, then watch the <b>Logs</b> page for an <code>ADMS handshake</code> line.</li>
+  </ul>
+
+  <h4>“Port 3000 is already in use”</h4>
+  <p>Another program (or a second copy of ZK Bridge) uses the port. Stop it, or set a different <code>PORT</code> in <code>.env</code>.</p>
+
+  <h4>Test Connection to the ERP fails</h4>
+  <ul>
+    <li>Open <code>&lt;base URL&gt;/zk/ping</code> in a browser on the same computer to check it is reachable.</li>
+    <li><code>401</code>/<code>403</code>: the API token is wrong or missing. <code>404</code>: the base URL or route is wrong (remember to include <code>/api</code> if your routes use it).</li>
+    <li>HTTPS errors: make sure the ERP has a valid SSL certificate.</li>
+  </ul>
+
+  <h4>Attendance is collected but not in the ERP</h4>
+  <p>Check that <b>Attendance Push</b> is enabled in Settings, then click <b>Push to ERP</b> on the Attendance page and look at the message and the <b>Logs</b> page. Records stay <i>New</i> until your endpoint returns a <code>2xx</code> status.</p>
+
+  <h4>Employee names do not change on the device</h4>
+  <p>ADMS devices apply changes on their next check-in (up to about 30 seconds). Use <b>Load from Machine</b> afterwards to confirm.</p>
+
+  <h4 id="forgot-password">I forgot the admin password</h4>
+  <ol>
+    <li>Add to <code>.env</code>: <code>MASTER_USERNAME=recovery</code> and <code>MASTER_PASSWORD=</code> followed by a strong temporary password.</li>
+    <li>Restart ZK Bridge and sign in with these details (they always have superadmin access).</li>
+    <li>Reset the password in <b>Manage Users</b>, then remove both lines from <code>.env</code> and restart.</li>
+  </ol>
+
+  <h4>Can I run the bridge on the same server as my ERP?</h4>
+  <p>Yes, if the devices can reach that server's ADMS port (directly or over a VPN). Most installations run the bridge on a PC in the office instead, so devices never need to be exposed to the internet.</p>
+
+  <h4>How many devices are supported?</h4>
+  <p>There is no fixed limit. A typical office PC handles dozens of devices comfortably.</p>
+
+  <h4>Can I start over with a fresh setup?</h4>
+  <p>Stop ZK Bridge, delete the <code>data/</code> folder (and <code>.env</code> if you also want to reset ports and ERP settings), then run <code>npm install</code> and start it again. The setup wizard will appear.</p>
+</section>
+
+<section id="changelog">
+  <h2>Changelog</h2>
+  <h4>Version 1.0.0 — initial release</h4>
+  <ul>
+    <li>ADMS push server and TCP/IP device connector</li>
+    <li>Employee sync from ERP to devices and attendance push to ERP, on demand or on a schedule</li>
+    <li>Browser-based setup wizard</li>
+    <li>Users, custom roles and server-enforced permissions</li>
+    <li>White-label branding</li>
+    <li>Windows service and systemd installers</li>
+  </ul>
+</section>
+
+<section id="credits">
+  <h2>Credits</h2>
+  <p>ZK Bridge is built with these open-source packages. Thank you to their authors.</p>
+  <table>
+    <tr><th>Package</th><th>License</th><th>Package</th><th>License</th></tr>
+    <tr><td>Express</td><td>MIT</td><td>Socket.IO</td><td>MIT</td></tr>
+    <tr><td>express-session</td><td>MIT</td><td>memorystore</td><td>MIT</td></tr>
+    <tr><td>axios</td><td>MIT</td><td>bcryptjs</td><td>BSD-3-Clause</td></tr>
+    <tr><td>dotenv</td><td>BSD-2-Clause</td><td>node-cron</td><td>ISC</td></tr>
+    <tr><td>winston</td><td>MIT</td><td>node-windows (WinSW)</td><td>MIT</td></tr>
+  </table>
+  <p>ZKTeco is a trademark of ZKTeco Co., Ltd. ZK Bridge is an independent product and is not affiliated with or endorsed by ZKTeco.</p>
+</section>
+
+<section id="support">
+  <h2>Support</h2>
+  <p>If you need help, please contact me through my CodeCanyon profile page or at <a href="https://mestiaque.com" target="_blank" rel="noopener">mestiaque.com</a>. To get an answer quickly, include:</p>
+  <ul>
+    <li>Your operating system and Node.js version (<code>node -v</code>)</li>
+    <li>Your device model and firmware version</li>
+    <li>What you did, what you expected, and what happened</li>
+    <li>The relevant lines from the <b>Logs</b> page</li>
+  </ul>
+  <p>Support covers installation, configuration and bugs. Customisation and integration work for a specific ERP can be quoted separately.</p>
+</section>
+
+<footer>ZK Bridge · Developed by <a href="https://mestiaque.com" target="_blank" rel="noopener">M. Estiaque</a></footer>
+</main>
+</div>
+</body>
+</html>

@@ -67,77 +67,17 @@ MASTER_PASSWORD=
 
 ---
 
-## ERP API Endpoints Required
+## ERP API
 
-Add these to your ERP app:
+Your ERP needs three JSON endpoints under the API base URL:
 
-```php
-// routes/api.php
-Route::middleware('auth:sanctum')->prefix('zk')->group(function () {
-    Route::get('/ping',        [ZKController::class, 'ping']);
-    Route::get('/employees',   [ZKController::class, 'employees']);
-    Route::post('/attendance', [ZKController::class, 'storeAttendance']);
-});
-```
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/zk/ping` | Connection test |
+| GET | `/zk/employees` | Employee list → devices (`uid`, `employee_id`, `name`, …) |
+| POST | `/zk/attendance` | Receives `{ "records": [ { "employeeId", "time", "status", "deviceId", … } ] }` |
 
-### ZKController.php
-
-```php
-<?php
-namespace App\Http\Controllers;
-
-use App\Models\Employee;
-use App\Models\Attendance;
-use Illuminate\Http\Request;
-
-class ZKController extends Controller
-{
-    public function ping()
-    {
-        return response()->json(['message' => 'pong', 'status' => 'ok']);
-    }
-
-    public function employees()
-    {
-        $employees = Employee::select('id', 'employee_id', 'name')
-            ->get()
-            ->map(fn($e, $i) => [
-                'id'          => $e->id,
-                'uid'         => $i + 1,         // ZKTeco UID (1-65535)
-                'employee_id' => $e->employee_id,
-                'name'        => $e->name,
-                'privilege'   => 0,               // 0=user, 14=admin
-                'password'    => '',
-            ]);
-
-        return response()->json(['data' => $employees]);
-    }
-
-    public function storeAttendance(Request $request)
-    {
-        $records = $request->input('records', []);
-        $saved = 0;
-
-        foreach ($records as $record) {
-            Attendance::updateOrCreate(
-                [
-                    'employee_id' => $record['employee_id'] ?? null,
-                    'punch_time'  => $record['time'] ?? null,
-                    'device_id'   => $record['device_id'] ?? null,
-                ],
-                [
-                    'status'  => $record['status'] ?? '0',
-                    'source'  => $record['source'] ?? 'zk',
-                    'raw'     => json_encode($record),
-                ]
-            );
-            $saved++;
-        }
-
-        return response()->json(['saved' => $saved, 'message' => 'OK']);
-    }
-}
-```
+Full field reference and a Laravel example: [documentation/index.html](documentation/index.html#erp).
 
 ---
 
@@ -145,9 +85,9 @@ class ZKController extends Controller
 
 ### ADMS (Newer Devices)
 On the ZKTeco device:
-1. Go to **Comm → ADMS**
-2. Set server address: `http://<this-machine-ip>:7788`
-3. Enable push, save
+1. Go to **Menu → COMM → Cloud Server Setting** (older models: **Comm → ADMS**)
+2. Server address: this computer's LAN IP, port `7788`
+3. Save and restart the device
 
 The device will start pushing attendance automatically.
 
@@ -156,6 +96,13 @@ The device will start pushing attendance automatically.
 2. Click **Add TCP/IP Device**
 3. Enter device IP (default port: 4370)
 4. Click Connect
+
+---
+
+## Documentation
+
+Open [documentation/index.html](documentation/index.html) in a browser for the full guide:
+installation, device setup, ERP API, features, configuration and troubleshooting.
 
 ---
 
@@ -197,4 +144,4 @@ zk-bridge/
 
 ## Developer
 
-Developed by **M. Estiaque** — [mestiaque.com](https://mestiaque.com)
+Developed by **M. Estiaque Ahmed Khan** — [mestiaque.com](https://mestiaque.com)
