@@ -468,6 +468,7 @@ class ZKController extends Controller
     <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the user guide.</td></tr>
   </table>
   <p>You can create your own roles and choose exactly which pages and buttons each role may use. Permissions are enforced by the server, not only hidden in the interface.</p>
+  <p><b>Interface Permissions</b> (also at the bottom of the sidebar, superadmin only) switches pages and buttons off for <i>every</i> role at once — for example, to hide the CSV/DAT export everywhere. A user can use a feature only if both their role and the interface permissions allow it.</p>
   <div class="box note"><p><b>Security:</b> after 5 wrong passwords for the same account, sign-in from that computer is blocked for 15 minutes. Passwords are stored as bcrypt hashes.</p></div>
 </section>
 

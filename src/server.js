@@ -89,8 +89,6 @@ app.use(sessionMiddleware);
 const publicDir = path.join(__dirname, '../public');
 const sendLogo = (req, res) => res.sendFile(branding.logoPath());
 app.get('/brand/logo', sendLogo);
-app.get('/logo.png',    sendLogo);
-app.get('/favicon.png', sendLogo);
 app.get('/favicon.ico', sendLogo);
 app.get('/api/branding', (req, res) => res.json(branding.publicBranding()));
 app.get('/js/branding.js', (req, res) => res.sendFile(path.join(publicDir, 'js/branding.js')));

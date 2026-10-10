@@ -1034,6 +1034,8 @@ async function loadCurrentUser() {
     if (info) info.textContent = user.username + ' (' + user.role + ')';
     const usersLink = document.getElementById('nav-users-link');
     if (usersLink && user.role === 'superadmin') usersLink.style.display = 'flex';
+    const permsLink = document.getElementById('nav-perms-link');
+    if (permsLink && user.role === 'superadmin') permsLink.style.display = 'flex';
     if (user.role === 'superadmin') {
       document.getElementById('card-branding').style.display = '';
       fillBrandingForm(window.BRANDING);

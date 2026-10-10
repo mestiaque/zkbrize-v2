@@ -7,7 +7,7 @@ const { store, getState, clearLogs, upsertEmployee, deleteEmployee, markAttendan
 const { testConnection, fetchEmployees, pushAttendance } = require('./laravel/api');
 const { connectTCPDevice, fetchAttendanceFromTCP, disconnectTCPDevice, syncEmployeesToTCP, getEmployeesFromDevice, setEmployeeOnDevice, deleteEmployeeFromDevice } = require('./tcpip/connector');
 const { requestSetUserOnADMS, requestDeleteUserOnADMS, requestUsersFromADMS, requestAttLogsFromADMS, pendingOptionPush, restartADMSServer, deviceUserCache } = require('./adms/server');
-const { runEmployeeSync, runAttendanceFetch, updateSchedule, getSchedulerStatus } = require('./scheduler');
+const { updateSchedule, getSchedulerStatus } = require('./scheduler');
 const logger = require('./logger');
 const { requirePerm, requireSuperAdmin, getEffectivePermissions } = require('./auth');
 const { restartProcess } = require('./restart');
@@ -217,16 +217,6 @@ router.post('/laravel/set-employees', requirePerm('employees.btn_set_device'), a
   res.json({ success: true, results, total: empResult.employees.length });
 });
 
-router.post('/laravel/sync-employees', requirePerm('employees.btn_set_device'), async (req, res) => {
-  const result = await runEmployeeSync();
-  res.json({ success: true, message: 'Employee sync triggered' });
-});
-
-router.post('/laravel/fetch-attendance', requirePerm('attendance.btn_push_laravel'), async (req, res) => {
-  await runAttendanceFetch();
-  res.json({ success: true, message: 'Attendance fetch triggered' });
-});
-
 router.post('/laravel/push-attendance', requirePerm('attendance.btn_push_laravel'), async (req, res) => {
   const allRecords = store.attendanceLogs;
   const unpushed   = allRecords.filter(r => !r.pushedToERP);
@@ -303,11 +293,6 @@ router.get('/devices/ping', requirePerm('devices.card_ping_test'), (req, res) =>
     const rtt = match ? parseFloat(match[1]) : elapsed;
     res.json({ success: true, reachable: true, ip, rtt });
   });
-});
-
-// ── Devices ────────────────────────────────────────────────────────
-router.get('/devices', (req, res) => {
-  res.json({ devices: Object.values(store.devices) });
 });
 
 router.post('/devices/tcp/connect', requirePerm('devices.card_add_tcp'), async (req, res) => {
@@ -628,11 +613,6 @@ router.get('/attendance', requirePerm('nav.attendance'), (req, res) => {
     logs = logs.filter(l => new Date(l.time) <= to);
   }
   res.json({ records: logs.slice(0, limit), total: store.attendanceLogs.length, filtered: logs.length });
-});
-
-// ── Sync Log ───────────────────────────────────────────────────────
-router.get('/sync-log', (req, res) => {
-  res.json({ log: store.syncLog });
 });
 
 // ── Server restart ─────────────────────────────────────────────────
