@@ -1131,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDashboardGreeting();
   // Know the user's role and permissions before choosing which page to open
   await Promise.all([loadCurrentUser(), applyPermissions()]);
+  document.body.classList.remove('perms-pending');
   let saved = null;
   try { saved = localStorage.getItem('activePage'); } catch {}
   showPage(location.hash.slice(1) || saved || 'dashboard');
