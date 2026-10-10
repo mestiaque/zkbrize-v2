@@ -53,6 +53,7 @@ jobs:
           try { Invoke-WebRequest http://127.0.0.1:3200/login -UseBasicParsing -TimeoutSec 2 | Out-Null } catch { $up = $false }
           if ($up) { throw 'stop.bat did not stop the server' }
           Write-Host 'start.bat / stop.bat OK'
+          exit 0
 
       - name: Windows service install
         if: runner.os == 'Windows'
@@ -62,6 +63,7 @@ jobs:
           for ($i = 0; $i -lt 30; $i++) { if ((sc.exe query zkbridge.exe) -match 'RUNNING') { break }; Start-Sleep 1 }
           sc.exe query zkbridge.exe
           if (-not ((sc.exe query zkbridge.exe) -match 'RUNNING')) { throw 'service is not running' }
+          exit 0
 
       - name: Test against Windows service (incl. restart)
         if: runner.os == 'Windows'
@@ -73,8 +75,10 @@ jobs:
         run: |
           node scripts/service.js uninstall
           Start-Sleep 5
-          if ((sc.exe query zkbridge.exe) -match 'RUNNING') { throw 'service still running' }
+          $state = sc.exe query zkbridge.exe
+          if ($LASTEXITCODE -ne 1060) { $state; throw 'service is still installed' }
           Write-Host 'service removed'
+          exit 0
 
       # ── Linux launchers ───────────────────────────────────────────
       - name: start.sh / stop.sh
