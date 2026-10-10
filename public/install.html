@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en" data-brand-title="Setup">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup</title>
+<link rel="icon" href="/brand/logo">
+<script src="/js/branding.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --primary: #3b82f6; --primary-dk: #2563eb; --text: #1a202c; --text-2: #64748b; --text-3: #94a3b8; --border: #e2e8f0; --green: #10b981; --red: #ef4444; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f8; color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; font-size: 14px; }
+  .card { background: #fff; border-radius: 14px; box-shadow: 0 4px 24px rgba(0,0,0,.08); width: 100%; max-width: 560px; overflow: hidden; }
+  .head { padding: 28px 32px 0; display: flex; align-items: center; gap: 12px; }
+  .head img { width: 40px; height: 40px; border-radius: 10px; object-fit: contain; }
+  .head .name { font-size: 18px; font-weight: 700; }
+  .head .sub { font-size: 12px; color: var(--text-2); }
+  .steps { display: flex; gap: 6px; padding: 20px 32px 0; }
+  .steps div { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background .2s; }
+  .steps div.on { background: var(--primary); }
+  .body { padding: 24px 32px 8px; }
+  .step { display: none; }
+  .step.active { display: block; }
+  h2 { font-size: 19px; margin-bottom: 4px; }
+  p.lead { color: var(--text-2); font-size: 13px; margin-bottom: 20px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px; }
+  label .opt { color: var(--text-3); font-weight: 400; }
+  input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color .15s; }
+  input:focus { border-color: var(--primary); }
+  .field { margin-bottom: 16px; }
+  .hint { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .check { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+  .check:last-child { border-bottom: 0; }
+  .check .icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; }
+  .check .icon.ok { background: var(--green); }
+  .check .icon.bad { background: var(--red); }
+  .check .hint { margin-top: 2px; }
+  .foot { padding: 16px 32px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  button { padding: 10px 18px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text); }
+  button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  button.primary:hover { background: var(--primary-dk); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  .msg { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+  .msg.error { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .msg.ok { display: block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+  .box { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .box dt { font-size: 12px; color: var(--text-2); }
+  .box dd { font-family: ui-monospace, Consolas, monospace; font-size: 14px; margin-bottom: 8px; }
+  .box dd:last-child { margin-bottom: 0; }
+  .credit { text-align: center; font-size: 11px; color: var(--text-3); padding: 0 0 18px; }
+  .credit a { color: inherit; }
+  @media (max-width: 480px) { .head, .steps, .body, .foot { padding-left: 20px; padding-right: 20px; } .row { flex-direction: column; gap: 0; } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <img data-brand-logo alt="">
+    <div>
+      <div class="name" data-brand="appName"></div>
+      <div class="sub">Setup wizard</div>
+    </div>
+  </div>
+  <div class="steps" id="steps"><div></div><div></div><div></div><div></div></div>
+
+  <div class="body">
+    <div class="msg" id="msg"></div>
+
+    <!-- 1. Requirements -->
+    <section class="step" data-step="1">
+      <h2>Welcome</h2>
+      <p class="lead">Let's get the bridge ready. First, a quick check of this computer.</p>
+      <div id="checks"></div>
+    </section>
+
+    <!-- 2. Admin account -->
+    <section class="step" data-step="2">
+      <h2>Administrator account</h2>
+      <p class="lead">This account has full access. You can add more users later.</p>
+      <div class="field">
+        <label for="a-user">Username</label>
+        <input id="a-user" autocomplete="username" value="admin" maxlength="32">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="a-pass">Password</label>
+          <input id="a-pass" type="password" autocomplete="new-password" maxlength="128">
+        </div>
+        <div class="field">
+          <label for="a-pass2">Confirm password</label>
+          <input id="a-pass2" type="password" autocomplete="new-password" maxlength="128">
+        </div>
+      </div>
+      <div class="hint">At least 8 characters.</div>
+    </section>
+
+    <!-- 3. ERP -->
+    <section class="step" data-step="3">
+      <h2>ERP connection <span style="font-size:13px;font-weight:400;color:var(--text-3)">— optional</span></h2>
+      <p class="lead">Where should employees come from and attendance go to? You can skip this and set it later in Settings.</p>
+      <div class="field">
+        <label for="e-url">ERP API Base URL</label>
+        <input id="e-url" type="url" placeholder="https://erp.example.com/api">
+        <div class="hint">The bridge calls <code>/zk/ping</code>, <code>/zk/employees</code> and <code>/zk/attendance</code> under this URL.</div>
+      </div>
+      <div class="field">
+        <label for="e-token">API Token (Bearer) <span class="opt">— optional</span></label>
+        <input id="e-token" type="password" autocomplete="off">
+      </div>
+      <button type="button" id="test-btn" onclick="testErp()">Test Connection</button>
+    </section>
+
+    <!-- 4. Branding & devices -->
+    <section class="step" data-step="4">
+      <h2>Branding &amp; devices</h2>
+      <p class="lead">Name this installation and choose the port ZKTeco devices push to.</p>
+      <div class="field">
+        <label for="b-name">App Name</label>
+        <input id="b-name" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="b-company">Company Name <span class="opt">— optional</span></label>
+        <input id="b-company" maxlength="60" placeholder="Your Company Ltd.">
+      </div>
+      <div class="field">
+        <label for="d-port">ADMS Port</label>
+        <input id="d-port" type="number" min="1024" max="65535">
+        <div class="hint">Devices with ADMS/Cloud push send attendance to this port. Allow it in the firewall.</div>
+      </div>
+    </section>
+
+    <!-- 5. Done -->
+    <section class="step" data-step="5">
+      <h2>All set 🎉</h2>
+      <p class="lead">Setup is complete and you are signed in. To connect an ADMS device, open <b>Menu → COMM → Cloud Server Setting</b> on the device and enter:</p>
+      <dl class="box">
+        <dt>Server Address</dt><dd id="done-ip"></dd>
+        <dt>Server Port</dt><dd id="done-port"></dd>
+      </dl>
+      <p class="lead">Older devices without ADMS can be added by IP on the <b>Devices</b> page.</p>
+    </section>
+  </div>
+
+  <div class="foot">
+    <button type="button" id="back-btn" onclick="go(-1)">Back</button>
+    <button type="button" class="primary" id="next-btn" onclick="go(1)">Continue</button>
+  </div>
+  <div class="credit" id="dev-credit"></div>
+</div>
+
+<script>
+let step = 1, status = null;
+
+function $(id) { return document.getElementById(id); }
+function showMsg(text, ok) { const m = $('msg'); m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'error'); }
+function clearMsg() { $('msg').className = 'msg'; }
+
+function render() {
+  document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', +s.dataset.step === step));
+  document.querySelectorAll('#steps div').forEach((d, i) => d.classList.toggle('on', i < step));
+  $('back-btn').style.visibility = step > 1 && step < 5 ? 'visible' : 'hidden';
+  $('next-btn').textContent = step === 4 ? 'Finish Setup' : step === 5 ? 'Open Dashboard' : step === 3 && !$('e-url').value.trim() ? 'Skip' : 'Continue';
+  if (step === 1) $('next-btn').disabled = !status || status.checks.some(c => !c.ok);
+}
+
+function validate() {
+  if (step === 2) {
+    const u = $('a-user').value.trim(), p = $('a-pass').value;
+    if (!/^[A-Za-z0-9._@-]{3,32}$/.test(u)) return 'Username must be 3-32 characters (letters, numbers, . _ @ -)';
+    if (p.length < 8) return 'Password must be at least 8 characters';
+    if (p !== $('a-pass2').value) return 'Passwords do not match';
+  }
+  if (step === 3) {
+    const url = $('e-url').value.trim();
+    if (url && !/^https?:\/\/\S+$/i.test(url)) return 'ERP URL must start with http:// or https://';
+  }
+  if (step === 4) {
+    if (!$('b-name').value.trim()) return 'App name is required';
+    const port = +$('d-port').value;
+    if (!(port >= 1024 && port <= 65535)) return 'ADMS port must be between 1024 and 65535';
+  }
+  return null;
+}
+
+async function go(dir) {
+  clearMsg();
+  if (step === 5) { window.location.href = '/'; return; }
+  if (dir > 0) {
+    const err = validate();
+    if (err) { showMsg(err); return; }
+    if (step === 4) return finish();
+  }
+  step = Math.min(5, Math.max(1, step + dir));
+  render();
+}
+
+async function testErp() {
+  clearMsg();
+  const btn = $('test-btn');
+  btn.disabled = true; btn.textContent = 'Testing…';
+  try {
+    const res = await fetch('/api/install/test-erp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: $('e-url').value.trim(), token: $('e-token').value.trim() }),
+    });
+    const data = await res.json();
+    showMsg(data.success ? 'Connected: ' + data.message : 'Could not connect: ' + data.message, data.success);
+  } catch { showMsg('Connection error'); }
+  btn.disabled = false; btn.textContent = 'Test Connection';
+}
+
+async function finish() {
+  const btn = $('next-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch('/api/install', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        admin: { username: $('a-user').value.trim(), password: $('a-pass').value },
+        erp: { url: $('e-url').value.trim(), token: $('e-token').value.trim() },
+        brand: { appName: $('b-name').value.trim(), companyName: $('b-company').value.trim() },
+        admsPort: +$('d-port').value,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) { showMsg(data.error || 'Setup failed'); btn.disabled = false; render(); return; }
+    $('done-ip').textContent = status.serverIp || window.location.hostname;
+    $('done-port').textContent = $('d-port').value;
+    btn.disabled = false;
+    step = 5; render();
+    loadBranding();
+  } catch {
+    showMsg('Connection error. Is the server still running?');
+    btn.disabled = false; render();
+  }
+}
+
+async function init() {
+  try {
+    const res = await fetch('/api/install/status');
+    if (res.status === 403) { window.location.href = '/login'; return; }
+    status = await res.json();
+  } catch { showMsg('Could not reach the server.'); return; }
+
+  const box = $('checks');
+  status.checks.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'check';
+    row.innerHTML = `<div class="icon ${c.ok ? 'ok' : 'bad'}">${c.ok ? '✓' : '!'}</div><div><div class="t"></div>${c.ok ? '' : '<div class="hint"></div>'}</div>`;
+    row.querySelector('.t').textContent = c.name;
+    if (!c.ok) row.querySelector('.hint').textContent = c.hint;
+    box.append(row);
+  });
+  if (status.checks.some(c => !c.ok)) showMsg('Fix the items above, then reload this page.');
+
+  $('b-name').value = status.branding?.appName || '';
+  $('b-company').value = status.branding?.companyName || '';
+  $('d-port').value = status.admsPort;
+  render();
+}
+
+$('e-url').addEventListener('input', render);
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') go(1); });
+init();
+</script>
+</body>
+</html>

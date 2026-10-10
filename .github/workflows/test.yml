@@ -1,0 +1,111 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        node: [20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: npm install (runs first-time setup)
+        run: npm install --no-audit --no-fund
+
+      - name: Use test port
+        shell: bash
+        run: |
+          test -f .env
+          sed -i 's/^PORT=.*/PORT=3200/' .env
+          grep -q '^SESSION_SECRET=.\+' .env
+
+      - name: Install wizard, auth, permissions, ping, restart
+        run: node .github/ci/smoke.js full
+
+      # ── Windows launchers ─────────────────────────────────────────
+      - name: start.bat / stop.bat
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmd /c start.bat
+          $ok = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            try { Invoke-WebRequest http://127.0.0.1:3200/login -UseBasicParsing -TimeoutSec 2 | Out-Null; $ok = $true; break } catch { Start-Sleep 1 }
+          }
+          if (-not $ok) { Get-Content logs\server.log -ErrorAction SilentlyContinue; throw 'start.bat did not start the server' }
+          cmd /c "stop.bat nopause"
+          Start-Sleep 2
+          $up = $true
+          try { Invoke-WebRequest http://127.0.0.1:3200/login -UseBasicParsing -TimeoutSec 2 | Out-Null } catch { $up = $false }
+          if ($up) { throw 'stop.bat did not stop the server' }
+          Write-Host 'start.bat / stop.bat OK'
+
+      - name: Windows service install
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node scripts/service.js install
+          for ($i = 0; $i -lt 30; $i++) { if ((sc.exe query zkbridge.exe) -match 'RUNNING') { break }; Start-Sleep 1 }
+          sc.exe query zkbridge.exe
+          if (-not ((sc.exe query zkbridge.exe) -match 'RUNNING')) { throw 'service is not running' }
+
+      - name: Test against Windows service (incl. restart)
+        if: runner.os == 'Windows'
+        run: node .github/ci/smoke.js running
+
+      - name: Windows service uninstall
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node scripts/service.js uninstall
+          Start-Sleep 5
+          if ((sc.exe query zkbridge.exe) -match 'RUNNING') { throw 'service still running' }
+          Write-Host 'service removed'
+
+      # ── Linux launchers ───────────────────────────────────────────
+      - name: start.sh / stop.sh
+        if: runner.os == 'Linux'
+        run: |
+          ./start.sh
+          curl -sf -o /dev/null http://127.0.0.1:3200/login
+          ./stop.sh
+          sleep 2
+          ! curl -s -o /dev/null http://127.0.0.1:3200/login
+
+      - name: systemd service install
+        if: runner.os == 'Linux'
+        run: |
+          sudo "$(command -v node)" scripts/service.js install
+          sleep 3
+          systemctl is-active zk-bridge
+
+      - name: Test against systemd service (incl. restart)
+        if: runner.os == 'Linux'
+        run: node .github/ci/smoke.js running
+
+      - name: systemd service uninstall
+        if: runner.os == 'Linux'
+        run: |
+          sudo "$(command -v node)" scripts/service.js uninstall
+          ! systemctl is-active zk-bridge
+
+      - name: Server logs
+        if: always()
+        shell: bash
+        run: |
+          for f in logs/*.log; do echo "===== $f"; tail -n 60 "$f"; done || true
+          ls src/daemon 2>/dev/null && tail -n 60 src/daemon/*.log 2>/dev/null || true
