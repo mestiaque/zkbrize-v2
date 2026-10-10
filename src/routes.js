@@ -9,7 +9,7 @@ const { connectTCPDevice, fetchAttendanceFromTCP, disconnectTCPDevice, syncEmplo
 const { requestSetUserOnADMS, requestDeleteUserOnADMS, requestUsersFromADMS, requestAttLogsFromADMS, pendingOptionPush, restartADMSServer, deviceUserCache } = require('./adms/server');
 const { updateSchedule, getSchedulerStatus } = require('./scheduler');
 const logger = require('./logger');
-const { requirePerm, requireSuperAdmin, getEffectivePermissions } = require('./auth');
+const { requirePerm, requireSuperAdmin, requireOwner, getEffectivePermissions } = require('./auth');
 const { restartProcess } = require('./restart');
 const { setEnvValues } = require('./envfile');
 const branding = require('./branding');
@@ -30,7 +30,7 @@ router.get('/permissions', (req, res) => {
   });
 });
 
-router.post('/permissions', requireSuperAdmin, (req, res) => {
+router.post('/permissions', requireOwner, (req, res) => {
   const perms = req.body;
   if (!perms || typeof perms !== 'object') return res.status(400).json({ success: false, error: 'Invalid permissions' });
   savePermissions(perms);

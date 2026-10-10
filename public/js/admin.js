@@ -1,4 +1,4 @@
-// Users & Roles and Interface Permissions pages (superadmin only).
+// Users & Roles and Interface Permissions pages (owner only — see isOwner in src/auth.js).
 // Uses api(), toast() and closeModal() from app.js.
 
 const PERM_SCHEMA = {
@@ -151,12 +151,12 @@ async function loadUsers() {
   for (const u of data?.users || []) {
     const self = adminMe && u.id === adminMe.id;
     rows.push(`<tr>
-      <td><strong>${esc(u.username)}</strong> ${self ? '<span class="tag">you</span>' : ''}</td>
+      <td><strong>${esc(u.username)}</strong> ${u.owner ? '<span class="tag tag-blue">owner</span>' : ''} ${self ? '<span class="tag">you</span>' : ''}</td>
       <td>${roleTag(u.role)}</td>
       <td style="color:var(--text-2)">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
       <td>
         <button class="btn-sm" onclick="openUserModal('${esc(u.id)}')">Edit</button>
-        ${self ? '' : `<button class="btn-sm" style="color:var(--red)" onclick="deleteUser('${esc(u.id)}')">Delete</button>`}
+        ${self || u.owner ? '' : `<button class="btn-sm" style="color:var(--red)" onclick="deleteUser('${esc(u.id)}')">Delete</button>`}
       </td>
     </tr>`);
   }
@@ -179,9 +179,11 @@ function openUserModal(id) {
   name.disabled = !!user;
   document.getElementById('f-password').value = '';
   document.getElementById('f-pass-label').textContent = user ? 'New Password (leave blank to keep)' : 'Password';
-  document.getElementById('f-role').innerHTML = adminRoles
+  const roleSel = document.getElementById('f-role');
+  roleSel.innerHTML = adminRoles
     .map(r => `<option value="${esc(r.id)}" ${r.id === (user ? user.role : 'admin') ? 'selected' : ''}>${esc(r.name)}</option>`)
     .join('');
+  roleSel.disabled = !!user?.owner; // the owner always stays superadmin
   showErr('user-err', '');
   document.getElementById('modal-user').style.display = 'flex';
 }

@@ -107,7 +107,7 @@ function roleExists(role) {
   return loadRoles().some(r => r.id === role);
 }
 
-function createUser(username, password, role = 'admin') {
+function createUser(username, password, role = 'admin', { owner = false } = {}) {
   const users = loadUsers();
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     return { success: false, error: 'Username already exists' };
@@ -116,6 +116,7 @@ function createUser(username, password, role = 'admin') {
   const user = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     username, password: hash, role,
+    ...(owner ? { owner: true } : {}),
     createdAt: new Date().toISOString(),
   };
   users.push(user);
@@ -145,7 +146,27 @@ function deleteUser(id) {
 }
 
 function listUsers() { return loadUsers().map(safeUser); }
-function safeUser(u) { return { id: u.id, username: u.username, role: u.role, createdAt: u.createdAt }; }
+function safeUser(u) { return { id: u.id, username: u.username, role: u.role, owner: !!u.owner, createdAt: u.createdAt }; }
+
+// ── Owner (the account created by the setup wizard) ────────────────
+// Only the owner — and the optional .env emergency login, needed to recover a
+// lost owner password — may use Administration (users, roles, permissions).
+
+function isOwner(user) {
+  return !!user && (user.id === 'master' || user.owner === true);
+}
+
+// Installs from before the owner flag: the oldest superadmin becomes the owner
+function ensureOwner() {
+  const users = loadUsers();
+  if (!users.length || users.some(u => u.owner)) return;
+  const oldest = users
+    .filter(u => u.role === 'superadmin')
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
+  if (!oldest) return;
+  oldest.owner = true;
+  saveUsers(users);
+}
 
 // ── Auth verify ────────────────────────────────────────────────────
 
@@ -269,6 +290,11 @@ function requireAdmin(req, res, next) {
   deny(req, res, 403);
 }
 
+function requireOwner(req, res, next) {
+  if (isOwner(req.session?.user)) return next();
+  deny(req, res, 403);
+}
+
 function requireSuperAdmin(req, res, next) {
   if (req.session?.user?.role === 'superadmin') return next();
   deny(req, res, 403);
@@ -288,7 +314,7 @@ function requirePerm(...keys) {
 }
 
 module.exports = {
-  requireAuth, requireAdmin, requireSuperAdmin, requirePerm,
+  requireAuth, requireAdmin, requireSuperAdmin, requireOwner, requirePerm, isOwner, ensureOwner,
   verifyLogin, hasAnyLogin, masterEnabled, getEffectivePermissions,
   loginLockedFor, recordLoginFailure, clearLoginFailures,
   findUserById, roleExists, DEFAULT_ROLES, resolveRolePermissions,

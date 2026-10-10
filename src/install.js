@@ -89,7 +89,7 @@ router.post('/', async (req, res) => {
   if (brandErr) return res.status(400).json({ success: false, error: brandErr });
 
   // ── Apply ──
-  const created = createUser(admin.username, admin.password, 'superadmin');
+  const created = createUser(admin.username, admin.password, 'superadmin', { owner: true });
   if (!created.success) return res.status(400).json(created);
 
   if (brand && Object.keys(brand).length) {

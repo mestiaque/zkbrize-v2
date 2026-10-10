@@ -103,6 +103,7 @@ async function full() {
 
   const me = await req('GET', '/api/auth/me');
   ok(me.data?.role === 'superadmin', 'signed in as superadmin after install');
+  ok(me.data?.owner === true && me.data?.canAdminister === true, 'setup admin is the owner');
 
   const brand = await req('GET', '/api/branding');
   ok(brand.data?.appName === 'CI Bridge', 'branding saved');
@@ -114,6 +115,18 @@ async function full() {
   ok(badCron.status === 400, 'invalid cron rejected');
 
   ok(await admsUp(), `ADMS port ${ADMS_PORT} listening`);
+
+  // Administration is owner-only, even for other superadmins
+  await req('POST', '/api/auth/users/create', { username: 'cisuper', password: 'Super12345', role: 'superadmin' });
+  const ownerCookie = cookie;
+  cookie = '';
+  await req('POST', '/api/auth/login', { username: 'cisuper', password: 'Super12345' });
+  ok((await req('GET', '/api/auth/users')).status === 403, 'other superadmin cannot open Users & Roles');
+  ok((await req('POST', '/api/permissions', {})).status === 403, 'other superadmin cannot change interface permissions');
+  ok((await req('GET', '/api/auth/me')).data?.canAdminister === false, 'other superadmin has no Administration');
+  cookie = ownerCookie;
+  const ownerId = me.data?.id;
+  ok((await req('POST', '/api/auth/users/update', { id: ownerId, role: 'admin' })).data?.success === false, 'owner cannot be demoted');
 
   // Permissions: a viewer must not change settings
   await req('POST', '/api/auth/users/create', { username: 'civiewer', password: 'Viewer12345', role: 'viewer' });

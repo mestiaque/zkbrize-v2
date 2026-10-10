@@ -461,10 +461,11 @@ class ZKController extends Controller
 <section id="users">
   <h2>Users, roles &amp; permissions</h2>
   <figure><img src="images/users.png" alt="User management"><figcaption>Administration → Users &amp; Roles.</figcaption></figure>
-  <p>Superadmins see an <b>Administration</b> group in the sidebar with <b>Users &amp; Roles</b> and <b>Interface Permissions</b>. Three roles are built in:</p>
+  <p>The <b>owner</b> — the account created in the setup wizard — sees an <b>Administration</b> group in the sidebar with <b>Users &amp; Roles</b> and <b>Interface Permissions</b>. Nobody else can open these pages, including other superadmins. The owner account cannot be deleted or given a lower role. (The optional <a href="#forgot-password">emergency login</a> in <code>.env</code> also has access, so a lost owner password can be reset.)</p>
+  <p>Three roles are built in:</p>
   <table>
     <tr><th>Role</th><th>Access</th></tr>
-    <tr><td><b>superadmin</b></td><td>Everything, including users, permissions and branding. Cannot be edited or removed by an admin.</td></tr>
+    <tr><td><b>superadmin</b></td><td>Everything in the app, including branding. Administration is reserved for the owner.</td></tr>
     <tr><td><b>admin</b></td><td>Everything in the app except user management, interface permissions and branding.</td></tr>
     <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the User Guide.</td></tr>
   </table>

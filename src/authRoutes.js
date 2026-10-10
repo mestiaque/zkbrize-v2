@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   verifyLogin, createUser, updateUser, deleteUser, listUsers,
   createRole, updateRole, deleteRole, loadRoles,
-  requireAdmin, requireSuperAdmin, MASTER_USERNAME,
+  requireOwner, isOwner, MASTER_USERNAME,
   loginLockedFor, recordLoginFailure, clearLoginFailures,
   findUserById, roleExists, getEffectivePermissions, masterEnabled, resolveRolePermissions,
 } = require('./auth');
@@ -49,16 +49,20 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', (req, res) => {
   if (!req.session?.user) return res.status(401).json({ error: 'Not authenticated' });
-  res.json({ ...req.session.user, permissions: getEffectivePermissions(req.session.user) });
+  res.json({
+    ...req.session.user,
+    canAdminister: isOwner(req.session.user),
+    permissions: getEffectivePermissions(req.session.user),
+  });
 });
 
 // ── Users (admin + superadmin) ─────────────────────────────────────
 
-router.get('/users', requireAdmin, (req, res) => {
+router.get('/users', requireOwner, (req, res) => {
   res.json({ users: listUsers(), masterUser: MASTER_USERNAME, masterEnabled: masterEnabled() });
 });
 
-router.post('/users/create', requireAdmin, (req, res) => {
+router.post('/users/create', requireOwner, (req, res) => {
   const { username, password, role = 'admin' } = req.body || {};
   if (!USERNAME_RE.test(username || '')) return res.json({ success: false, error: 'Username must be 3-32 characters (letters, numbers, . _ @ -)' });
   if (!validPassword(password)) return res.json({ success: false, error: `Password must be at least ${MIN_PASSWORD} characters` });
@@ -70,13 +74,15 @@ router.post('/users/create', requireAdmin, (req, res) => {
   res.json(createUser(username, password, role));
 });
 
-router.post('/users/update', requireAdmin, (req, res) => {
+router.post('/users/update', requireOwner, (req, res) => {
   const { id, role, password } = req.body || {};
   if (!id) return res.json({ success: false, error: 'ID required' });
   const target = findUserById(id);
   if (!target) return res.json({ success: false, error: 'User not found' });
   if (!canManageUser(req.session.user, target))
     return res.json({ success: false, error: 'Only superadmin can modify a superadmin' });
+  if (target.owner && role && role !== 'superadmin')
+    return res.json({ success: false, error: 'The owner account must stay superadmin' });
   if (role && !roleExists(role)) return res.json({ success: false, error: 'Unknown role' });
   if (role === 'superadmin' && req.session.user.role !== 'superadmin')
     return res.json({ success: false, error: 'Only superadmin can assign superadmin role' });
@@ -85,11 +91,12 @@ router.post('/users/update', requireAdmin, (req, res) => {
   res.json(updateUser(id, { role, password }));
 });
 
-router.post('/users/delete', requireAdmin, (req, res) => {
+router.post('/users/delete', requireOwner, (req, res) => {
   const { id } = req.body || {};
   if (!id) return res.json({ success: false, error: 'ID required' });
   if (id === req.session.user.id) return res.json({ success: false, error: 'You cannot delete your own account' });
   const target = findUserById(id);
+  if (target?.owner) return res.json({ success: false, error: 'The owner account cannot be deleted' });
   if (!canManageUser(req.session.user, target))
     return res.json({ success: false, error: 'Only superadmin can delete a superadmin' });
   res.json(deleteUser(id));
@@ -97,23 +104,23 @@ router.post('/users/delete', requireAdmin, (req, res) => {
 
 // ── Roles (admin + superadmin) ─────────────────────────────────────
 
-router.get('/roles', requireAdmin, (req, res) => {
+router.get('/roles', requireOwner, (req, res) => {
   res.json({ roles: loadRoles().map(r => ({ ...r, permissions: resolveRolePermissions(r) })) });
 });
 
-router.post('/roles/create', requireAdmin, (req, res) => {
+router.post('/roles/create', requireOwner, (req, res) => {
   const { name, permissions } = req.body || {};
   if (!name || !/^[A-Za-z0-9 _-]{2,32}$/.test(name)) return res.json({ success: false, error: 'Role name must be 2-32 characters (letters, numbers, space, _ -)' });
   res.json(createRole(name, permissions));
 });
 
-router.post('/roles/update', requireAdmin, (req, res) => {
+router.post('/roles/update', requireOwner, (req, res) => {
   const { id, name, permissions } = req.body || {};
   if (!id) return res.json({ success: false, error: 'Role ID required' });
   res.json(updateRole(id, { name, permissions }));
 });
 
-router.post('/roles/delete', requireAdmin, (req, res) => {
+router.post('/roles/delete', requireOwner, (req, res) => {
   const { id } = req.body || {};
   if (!id) return res.json({ success: false, error: 'Role ID required' });
   res.json(deleteRole(id));

@@ -12,7 +12,7 @@ const { store, loadConfigFile } = require('./store');
 const { ensureDataFiles } = require('./datafiles');
 const routes = require('./routes');
 const authRoutes = require('./authRoutes');
-const { requireAuth } = require('./auth');
+const { requireAuth, ensureOwner } = require('./auth');
 const { installRouter, isInstalled } = require('./install');
 const branding = require('./branding');
 const { setEnvValues } = require('./envfile');
@@ -40,6 +40,7 @@ if (env.ATTENDANCE_FETCH_SCHEDULE) store.config.attendanceFetchSchedule = env.AT
 if (env.EMPLOYEE_SYNC_ENABLED) store.config.employeeSyncEnabled = env.EMPLOYEE_SYNC_ENABLED !== 'false';
 if (env.ATTENDANCE_SYNC_ENABLED) store.config.attendanceSyncEnabled = env.ATTENDANCE_SYNC_ENABLED !== 'false';
 ensureDataFiles();
+ensureOwner();
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';

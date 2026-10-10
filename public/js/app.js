@@ -1060,8 +1060,8 @@ async function loadCurrentUser() {
     const user = await res.json();
     const info = document.getElementById('sidebar-user-info');
     if (info) info.textContent = user.username + ' (' + user.role + ')';
+    if (user.canAdminister) document.getElementById('nav-admin-group').style.display = '';
     if (user.role === 'superadmin') {
-      document.getElementById('nav-admin-group').style.display = '';
       document.getElementById('card-branding').style.display = '';
       fillBrandingForm(window.BRANDING);
       document.addEventListener('branding', e => fillBrandingForm(e.detail));
