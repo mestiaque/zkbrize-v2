@@ -1,5 +1,5 @@
 {
-  "name": "zk-bridge",
+  "name": "attendbridge",
   "version": "1.0.0",
   "private": true,
   "description": "Connect ZKTeco attendance devices to any ERP, HRM or payroll system",

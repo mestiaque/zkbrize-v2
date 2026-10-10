@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install ZK Bridge as a systemd service (starts on boot)
+# Install AttendBridge as a systemd service (starts on boot)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR" || exit 1
 [ -d node_modules ] || npm install || exit 1

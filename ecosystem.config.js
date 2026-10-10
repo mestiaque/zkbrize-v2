@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'zk-bridge',
+    name: 'attendbridge',
     script: 'src/server.js',
     watch: false,
     autorestart: true,

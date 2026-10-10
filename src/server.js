@@ -63,7 +63,7 @@ app.disable('x-powered-by');
 
 const sessionStore = new FileSessionStore();
 const sessionMiddleware = session({
-  name: 'zkb.sid',
+  name: 'attendbridge.sid',
   secret: SESSION_SECRET,
   store: sessionStore,
   resave: false,

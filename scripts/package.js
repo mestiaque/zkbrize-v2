@@ -1,4 +1,4 @@
-// Builds the CodeCanyon upload: dist/zk-bridge-v<version>.zip
+// Builds the CodeCanyon upload: dist/attendbridge-v<version>.zip
 // Uses `git archive`, so only committed files are packed (never .env, data/,
 // logs/ or node_modules). Paths marked export-ignore in .gitattributes are left out.
 const { execSync } = require('child_process');
@@ -14,7 +14,7 @@ if (run('git status --porcelain') && !process.argv.includes('--allow-dirty')) {
   process.exit(1);
 }
 
-const name = `zk-bridge-v${version}`;
+const name = `attendbridge-v${version}`;
 const out = path.join(ROOT, 'dist', `${name}.zip`);
 fs.mkdirSync(path.dirname(out), { recursive: true });
 if (fs.existsSync(out)) fs.unlinkSync(out);

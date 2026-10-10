@@ -7,7 +7,7 @@ const LOGO_DIR     = path.join(DATA_DIR, 'branding');
 const DEFAULT_LOGO = path.join(__dirname, '../public/logo.png');
 
 const DEFAULTS = {
-  appName: 'ZK Bridge',
+  appName: 'AttendBridge',
   tagline: 'Attendance ↔ ERP Bridge',
   primaryColor: '#3b82f6',
   companyName: '',

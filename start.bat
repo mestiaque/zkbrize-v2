@@ -1,5 +1,5 @@
 @echo off
-title ZK Bridge Launcher
+title AttendBridge Launcher
 cd /d "%~dp0"
 
 :: Check Node.js
@@ -31,12 +31,12 @@ for /f "tokens=1,* delims==" %%a in ('findstr /b "PORT=" .env 2^>nul') do set "P
 set "URL=http://localhost:%PORT%"
 
 :: Installed as a Windows service? Then it is already running in the background.
-sc query "zkbridge.exe" >nul 2>&1
+sc query "attendbridge.exe" >nul 2>&1
 if errorlevel 1 goto :checkpm2
-sc query "zkbridge.exe" | findstr "RUNNING" >nul 2>&1
+sc query "attendbridge.exe" | findstr "RUNNING" >nul 2>&1
 if errorlevel 1 (
     echo Starting Windows service...
-    net start "zkbridge.exe" >nul 2>&1
+    net start "attendbridge.exe" >nul 2>&1
     if errorlevel 1 echo [WARN] Could not start the service. Run as Administrator or start it from Services.
 )
 goto :wait
@@ -45,13 +45,13 @@ goto :wait
 where pm2 >nul 2>&1
 if errorlevel 1 goto :nopm2
 
-call pm2 describe zk-bridge >nul 2>&1
+call pm2 describe attendbridge >nul 2>&1
 if errorlevel 1 (
     echo Starting server with PM2...
     call pm2 start ecosystem.config.js
 ) else (
     echo Restarting existing server...
-    call pm2 restart zk-bridge --update-env
+    call pm2 restart attendbridge --update-env
 )
 goto :wait
 
@@ -61,7 +61,7 @@ echo Starting server...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%PORT% " ^| findstr "LISTENING"') do (
     taskkill /f /pid %%a >nul 2>&1
 )
-start "ZK Bridge Server" /min cmd /c "node src\server.js > logs\server.log 2>&1"
+start "AttendBridge Server" /min cmd /c "node src\server.js > logs\server.log 2>&1"
 
 :wait
 echo Waiting for server to start...

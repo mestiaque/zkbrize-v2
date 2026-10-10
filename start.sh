@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ZK Bridge launcher (Linux/macOS)
+# AttendBridge launcher (Linux/macOS)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR" || exit 1
 
@@ -21,15 +21,15 @@ PORT=${PORT:-3000}
 URL="http://localhost:$PORT"
 
 # Installed as a systemd service? Then just make sure it is running.
-if [ -f /etc/systemd/system/zk-bridge.service ]; then
-  if ! systemctl is-active --quiet zk-bridge; then
-    echo "Starting zk-bridge service..."
-    sudo systemctl start zk-bridge
+if [ -f /etc/systemd/system/attendbridge.service ]; then
+  if ! systemctl is-active --quiet attendbridge; then
+    echo "Starting attendbridge service..."
+    sudo systemctl start attendbridge
   fi
 # Start or restart with PM2
 elif command -v pm2 &>/dev/null; then
-  if pm2 describe zk-bridge &>/dev/null; then
-    pm2 restart zk-bridge --update-env
+  if pm2 describe attendbridge &>/dev/null; then
+    pm2 restart attendbridge --update-env
   else
     pm2 start ecosystem.config.js
   fi

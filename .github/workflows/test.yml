@@ -74,9 +74,9 @@ jobs:
         shell: pwsh
         run: |
           node scripts/service.js install 2>&1 | Tee-Object -FilePath logs/service-install.log
-          for ($i = 0; $i -lt 30; $i++) { if ((sc.exe query zkbridge.exe) -match 'RUNNING') { break }; Start-Sleep 1 }
-          sc.exe query zkbridge.exe
-          if (-not ((sc.exe query zkbridge.exe) -match 'RUNNING')) { throw 'service is not running' }
+          for ($i = 0; $i -lt 30; $i++) { if ((sc.exe query attendbridge.exe) -match 'RUNNING') { break }; Start-Sleep 1 }
+          sc.exe query attendbridge.exe
+          if (-not ((sc.exe query attendbridge.exe) -match 'RUNNING')) { throw 'service is not running' }
           exit 0
 
       - name: Test against Windows service (incl. restart)
@@ -89,7 +89,7 @@ jobs:
         run: |
           node scripts/service.js uninstall
           Start-Sleep 5
-          $state = sc.exe query zkbridge.exe
+          $state = sc.exe query attendbridge.exe
           if ($LASTEXITCODE -ne 1060) { $state; throw 'service is still installed' }
           Write-Host 'service removed'
           exit 0
@@ -109,7 +109,7 @@ jobs:
         run: |
           sudo "$(command -v node)" scripts/service.js install
           sleep 3
-          systemctl is-active zk-bridge
+          systemctl is-active attendbridge
 
       - name: Test against systemd service (incl. restart)
         if: runner.os == 'Linux'
@@ -119,7 +119,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo "$(command -v node)" scripts/service.js uninstall
-          ! systemctl is-active zk-bridge
+          ! systemctl is-active attendbridge
 
       # Logs as annotations, so failures are readable without downloading job logs
       - name: Server logs
@@ -135,10 +135,10 @@ jobs:
           }
           for f in logs/*.log src/daemon/*.log src/daemon/*.err.log src/daemon/*.out.log; do annotate "$(basename "$f")" "$f"; done
           if [ "$RUNNER_OS" = "Linux" ]; then
-            sudo journalctl -u zk-bridge --no-pager -n 40 > /tmp/journal.log 2>&1 || true
+            sudo journalctl -u attendbridge --no-pager -n 40 > /tmp/journal.log 2>&1 || true
             annotate journal /tmp/journal.log
           else
-            sc.exe query zkbridge.exe > /tmp/sc.log 2>&1 || true
+            sc.exe query attendbridge.exe > /tmp/sc.log 2>&1 || true
             annotate "sc query" /tmp/sc.log
             ls -la src/daemon > /tmp/daemon.log 2>&1 || true
             annotate "src/daemon" /tmp/daemon.log

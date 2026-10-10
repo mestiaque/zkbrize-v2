@@ -13,8 +13,8 @@ Creates in `dist/`:
 
 | File | Upload form field |
 |---|---|
-| `zk-bridge-v1.0.0.zip` | **Main File(s)** — the product: source + `documentation/` |
-| `zk-bridge-v1.0.0-screenshots.zip` | **Screenshots** (optional ZIP of PNGs) |
+| `attendbridge-v1.0.0.zip` | **Main File(s)** — the product: source + `documentation/` |
+| `attendbridge-v1.0.0-screenshots.zip` | **Screenshots** (optional ZIP of PNGs) |
 
 ## Images
 

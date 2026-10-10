@@ -1,5 +1,5 @@
 @echo off
-title ZK Bridge - Remove Windows Service
+title AttendBridge - Remove Windows Service
 cd /d "%~dp0"
 
 net session >nul 2>&1

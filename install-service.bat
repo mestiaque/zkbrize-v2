@@ -1,5 +1,5 @@
 @echo off
-title ZK Bridge - Install Windows Service
+title AttendBridge - Install Windows Service
 cd /d "%~dp0"
 
 :: Re-launch with Administrator rights if needed

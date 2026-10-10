@@ -1,4 +1,4 @@
-// ZK Bridge Frontend
+// AttendBridge Frontend
 const socket = io();
 let state = { devices: [], attendanceLogs: [], syncLog: [], stats: {}, config: {} };
 let attendanceAll = [];

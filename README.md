@@ -29,7 +29,7 @@ changed later from **Settings**.
 
 **One-click (runs in background, opens browser):**
 - Linux: `./start.sh` / `./stop.sh`
-- Windows: double-click `start.bat` / `stop.bat` (or `ZK-Bridge.vbs` to start without a console window)
+- Windows: double-click `start.bat` / `stop.bat` (or `AttendBridge.vbs` to start without a console window)
 
 If PM2 is installed (`npm i -g pm2`), the start scripts use it, so the server restarts automatically if it crashes.
 
@@ -109,7 +109,7 @@ installation, device setup, ERP API, features, configuration and troubleshooting
 ## Project Structure
 
 ```
-zk-bridge/
+attendbridge/
 ├── src/
 │   ├── server.js          # Main entry point
 │   ├── install.js         # First-run setup wizard API

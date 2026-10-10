@@ -9,9 +9,9 @@ const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'src', 'server.js');
-const NAME = 'ZK Bridge';
+const NAME = 'AttendBridge';
 const DESCRIPTION = 'ZKTeco attendance device to ERP bridge';
-const UNIT_NAME = 'zk-bridge';
+const UNIT_NAME = 'attendbridge';
 const UNIT_FILE = `/etc/systemd/system/${UNIT_NAME}.service`;
 
 const action = process.argv[2];
@@ -35,7 +35,7 @@ function isWindowsAdmin() {
   try { execSync('net session', { stdio: 'ignore' }); return true; } catch { return false; }
 }
 
-const WIN_ID = 'zkbridge';                 // service name is "zkbridge.exe"
+const WIN_ID = 'attendbridge';                 // service name is "attendbridge.exe"
 const WIN_SERVICE = WIN_ID + '.exe';
 
 // node-windows only builds the WinSW config + exe here. Install/start are run
@@ -53,7 +53,7 @@ function windowsService() {
     script: SCRIPT,
     workingDirectory: ROOT,
     maxRestarts: 10,
-    env: [{ name: 'ZKB_SERVICE', value: '1' }],
+    env: [{ name: 'ATTENDBRIDGE_SERVICE', value: '1' }],
   });
   return { svc, winsw, dir: svc.directory() };
 }
@@ -130,7 +130,7 @@ Type=simple
 User=${user}
 WorkingDirectory=${ROOT}
 ExecStart=${process.execPath} ${SCRIPT}
-Environment=ZKB_SERVICE=1
+Environment=ATTENDBRIDGE_SERVICE=1
 Environment=NODE_ENV=production
 Restart=always
 RestartSec=2

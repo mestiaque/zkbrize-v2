@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZK Bridge — Documentation</title>
+<title>AttendBridge — Documentation</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   :root {
@@ -80,7 +80,7 @@
 <button class="menu-btn" onclick="document.querySelector('nav').classList.toggle('open')">☰ Contents</button>
 <div class="layout">
 <nav onclick="if (event.target.tagName === 'A') this.classList.remove('open')">
-  <div class="brand"><b>ZK Bridge</b><span>Documentation · v1.0.0</span></div>
+  <div class="brand"><b>AttendBridge</b><span>Documentation · v1.0.0</span></div>
   <div class="group">Getting started</div>
   <a href="#introduction">Introduction</a>
   <a href="#requirements">Requirements</a>
@@ -121,8 +121,8 @@
 
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="introduction">
-  <h1>ZK Bridge</h1>
-  <p class="lead">Connect ZKTeco attendance devices to your ERP, HRM or payroll system. ZK Bridge collects punches from your devices in real time, sends them to your ERP's API, and keeps employee lists on the devices in sync.</p>
+  <h1>AttendBridge</h1>
+  <p class="lead">Connect ZKTeco attendance devices to your ERP, HRM or payroll system. AttendBridge collects punches from your devices in real time, sends them to your ERP's API, and keeps employee lists on the devices in sync.</p>
   <div class="meta">
     <span><b>Version</b> 1.0.0</span>
     <span><b>Platforms</b> Windows · Linux</span>
@@ -130,17 +130,17 @@
     <span><b>Author</b> <a href="https://mestiaque.com" target="_blank" rel="noopener">M. Estiaque</a></span>
   </div>
 
-  <p>Thank you for purchasing ZK Bridge. This guide covers everything from installation to connecting your first device. If you have a question that is not answered here, see <a href="#support">Support</a>.</p>
+  <p>Thank you for purchasing AttendBridge. This guide covers everything from installation to connecting your first device. If you have a question that is not answered here, see <a href="#support">Support</a>.</p>
 
   <h3>How it works</h3>
   <div class="flow">
     <div><b>ZKTeco devices</b><span>ADMS push or TCP/IP</span></div>
     <i>attendance →<br>← employees</i>
-    <div><b>ZK Bridge</b><span>runs on a PC/server in your office</span></div>
+    <div><b>AttendBridge</b><span>runs on a PC/server in your office</span></div>
     <i>REST API (JSON) →<br>← employee list</i>
     <div><b>Your ERP</b><span>any language / framework</span></div>
   </div>
-  <p>ZK Bridge runs on a computer in the same network as your devices. Your ERP can be anywhere, including the cloud, because the bridge only makes outgoing HTTPS requests to it. Your ERP needs just three small API endpoints (see <a href="#erp">ERP integration</a>).</p>
+  <p>AttendBridge runs on a computer in the same network as your devices. Your ERP can be anywhere, including the cloud, because the bridge only makes outgoing HTTPS requests to it. Your ERP needs just three small API endpoints (see <a href="#erp">ERP integration</a>).</p>
 
   <h3>Features</h3>
   <div class="features">
@@ -169,18 +169,18 @@
     <tr><td>Devices</td><td>ZKTeco devices with <b>ADMS / Cloud Server</b> support (push) or the standard <b>TCP/IP port 4370</b> (pull).</td></tr>
     <tr><td>ERP</td><td>Any system that can expose 3 HTTP JSON endpoints. Optional for first tests.</td></tr>
   </table>
-  <div class="box note"><p><b>Shared hosting is not supported.</b> ZK Bridge is a long-running Node.js program that devices connect to, so it needs a PC, VPS or server where you can run programs — usually a computer in the same office as the devices.</p></div>
+  <div class="box note"><p><b>Shared hosting is not supported.</b> AttendBridge is a long-running Node.js program that devices connect to, so it needs a PC, VPS or server where you can run programs — usually a computer in the same office as the devices.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="installation">
   <h2>Installation</h2>
-  <p>Unzip the package to a permanent folder, for example <code>C:\zk-bridge</code> on Windows or <code>/opt/zk-bridge</code> on Linux. Avoid folders that sync to the cloud (OneDrive, Dropbox).</p>
+  <p>Unzip the package to a permanent folder, for example <code>C:\attendbridge</code> on Windows or <code>/opt/attendbridge</code> on Linux. Avoid folders that sync to the cloud (OneDrive, Dropbox).</p>
 
   <h3 id="install-windows">Windows</h3>
   <ol class="steps">
     <li>Install <b>Node.js 20 LTS or newer</b> from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> (keep the default options).</li>
-    <li>Open the ZK Bridge folder and double-click <code>start.bat</code>. The first time, it installs the dependencies (about a minute), starts the server and opens your browser.</li>
+    <li>Open the AttendBridge folder and double-click <code>start.bat</code>. The first time, it installs the dependencies (about a minute), starts the server and opens your browser.</li>
     <li>Complete the <a href="#setup-wizard">setup wizard</a> in the browser.</li>
     <li>For permanent use, install it as a Windows service — see <a href="#background">Run in the background</a>.</li>
   </ol>
@@ -195,7 +195,7 @@ npm start</code></pre>
 <pre><code>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 node -v</code></pre></li>
-    <li>In the ZK Bridge folder, run:
+    <li>In the AttendBridge folder, run:
 <pre><code>npm install
 npm start</code></pre></li>
     <li>Open <code>http://&lt;server-ip&gt;:3000</code> in a browser and complete the <a href="#setup-wizard">setup wizard</a>.</li>
@@ -204,7 +204,7 @@ npm start</code></pre></li>
   <div class="box tip"><p><b>Tip:</b> <code>npm install</code> also creates the <code>.env</code> file (from <code>.env.example</code>), the <code>data/</code> folder with all data files, the <code>logs/</code> folder, and a random session secret. You never need to copy or edit config files by hand.</p></div>
 
   <h3 id="setup-wizard">Setup wizard</h3>
-  <p>The first time you open ZK Bridge in a browser, a four-step setup wizard appears:</p>
+  <p>The first time you open AttendBridge in a browser, a four-step setup wizard appears:</p>
   <div class="grid2">
     <figure><img src="images/install-1.png" alt="Setup wizard: system check"><figcaption>1. System check</figcaption></figure>
     <figure><img src="images/install-2.png" alt="Setup wizard: administrator account"><figcaption>2. Administrator account</figcaption></figure>
@@ -225,13 +225,13 @@ npm start</code></pre></li>
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="background">
   <h2>Run in the background</h2>
-  <p>For daily use, install ZK Bridge as a <b>service</b>. It then starts automatically when the computer boots, runs without anyone logged in, and restarts itself if it ever stops.</p>
+  <p>For daily use, install AttendBridge as a <b>service</b>. It then starts automatically when the computer boots, runs without anyone logged in, and restarts itself if it ever stops.</p>
   <table>
     <tr><th></th><th>Windows</th><th>Linux (systemd)</th></tr>
     <tr><td>Install service</td><td>Double-click <code>install-service.bat</code> (asks for Administrator rights)</td><td><code>./install-service.sh</code> (asks for sudo)</td></tr>
     <tr><td>Remove service</td><td><code>uninstall-service.bat</code></td><td><code>./uninstall-service.sh</code></td></tr>
-    <tr><td>Status</td><td><code>npm run service:status</code> or Windows <b>Services</b> (“ZK Bridge”)</td><td><code>systemctl status zk-bridge</code></td></tr>
-    <tr><td>Service logs</td><td><code>src\daemon\*.log</code></td><td><code>journalctl -u zk-bridge -f</code></td></tr>
+    <tr><td>Status</td><td><code>npm run service:status</code> or Windows <b>Services</b> (“AttendBridge”)</td><td><code>systemctl status attendbridge</code></td></tr>
+    <tr><td>Service logs</td><td><code>src\daemon\*.log</code></td><td><code>journalctl -u attendbridge -f</code></td></tr>
   </table>
 
   <h3>Start / stop scripts</h3>
@@ -240,7 +240,7 @@ npm start</code></pre></li>
     <tr><th>Windows</th><th>Linux</th><th>What it does</th></tr>
     <tr><td><code>start.bat</code></td><td><code>./start.sh</code></td><td>Installs dependencies if needed, starts the server in the background and opens the browser. If the service is installed, it just makes sure it is running.</td></tr>
     <tr><td><code>stop.bat</code></td><td><code>./stop.sh</code></td><td>Stops the server.</td></tr>
-    <tr><td><code>ZK-Bridge.vbs</code></td><td>—</td><td>Same as <code>start.bat</code> but without a console window.</td></tr>
+    <tr><td><code>AttendBridge.vbs</code></td><td>—</td><td>Same as <code>start.bat</code> but without a console window.</td></tr>
   </table>
   <div class="box tip"><p><b>Using PM2?</b> If <a href="https://pm2.keymetrics.io" target="_blank" rel="noopener">PM2</a> is installed globally, the start scripts use it automatically (<code>ecosystem.config.js</code> is included).</p></div>
 </section>
@@ -248,12 +248,12 @@ npm start</code></pre></li>
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="devices">
   <h2>Connecting devices</h2>
-  <p>ZK Bridge supports two connection types. Use <b>ADMS</b> whenever your device supports it — punches arrive instantly and the device does not need a fixed IP.</p>
+  <p>AttendBridge supports two connection types. Use <b>ADMS</b> whenever your device supports it — punches arrive instantly and the device does not need a fixed IP.</p>
   <figure><img src="images/devices.png" alt="Devices page"><figcaption>Devices page: add TCP/IP devices, see the ADMS address, and test network reachability.</figcaption></figure>
 
   <h3 id="adms">ADMS (push) devices</h3>
   <ol class="steps">
-    <li>Find the IP address of the computer running ZK Bridge. It is shown on the <b>Devices</b> page under <b>ADMS Push Server</b>, and on the last screen of the setup wizard.</li>
+    <li>Find the IP address of the computer running AttendBridge. It is shown on the <b>Devices</b> page under <b>ADMS Push Server</b>, and on the last screen of the setup wizard.</li>
     <li>On the device, open <b>Menu → COMM → Cloud Server Setting</b> (on some models: <b>Menu → Comm → ADMS</b>).</li>
     <li>Set <b>Server Address</b> to the computer's IP (for example <code>192.168.1.10</code>) and <b>Server Port</b> to the ADMS port (default <code>7788</code>). Turn <b>Enable Domain Name</b> and <b>Proxy</b> off.</li>
     <li>Save and restart the device. Within a minute it appears on the <b>Devices</b> page with status <i>connected</i>.</li>
@@ -269,12 +269,12 @@ npm start</code></pre></li>
     <li>Under <b>Add TCP/IP Device</b>, enter the IP, port (default <code>4370</code>), a name, and the device's <b>Comm Key</b> (Menu → COMM → PC Connection → Comm Key) if one is set. Click <b>Connect Device</b>. The device's model, serial number and firmware appear in the device list.</li>
     <li>Punches are read automatically every time <b>Attendance Push</b> runs (see <a href="#schedule">Sync schedule</a>), and on demand with <b>Attendance → Fetch TCP</b> or <b>Sync Now</b>.</li>
   </ol>
-  <p>Devices close idle connections after a while; ZK Bridge simply reconnects on the next read or write, so a TCP device stays listed as connected. <b>Load from Machine</b>, <b>Set to Device</b>, and adding, editing or deleting an employee all work on TCP devices too. When several devices are connected, <b>Load from Machine</b> asks which one to read from.</p>
+  <p>Devices close idle connections after a while; AttendBridge simply reconnects on the next read or write, so a TCP device stays listed as connected. <b>Load from Machine</b>, <b>Set to Device</b>, and adding, editing or deleting an employee all work on TCP devices too. When several devices are connected, <b>Load from Machine</b> asks which one to read from.</p>
 
   <h3 id="firewall">Firewall</h3>
-  <p>Devices must be able to reach the ADMS port, and browsers the web port. Allow both on the computer running ZK Bridge.</p>
+  <p>Devices must be able to reach the ADMS port, and browsers the web port. Allow both on the computer running AttendBridge.</p>
   <h4>Windows (run as Administrator)</h4>
-<pre><code>netsh advfirewall firewall add rule name="ZK Bridge" dir=in action=allow protocol=TCP localport=3000,7788</code></pre>
+<pre><code>netsh advfirewall firewall add rule name="AttendBridge" dir=in action=allow protocol=TCP localport=3000,7788</code></pre>
   <h4>Linux (ufw)</h4>
 <pre><code>sudo ufw allow 3000/tcp
 sudo ufw allow 7788/tcp</code></pre>
@@ -284,7 +284,7 @@ sudo ufw allow 7788/tcp</code></pre>
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="erp">
   <h2>ERP integration</h2>
-  <p>ZK Bridge talks to your ERP through a small JSON API that you add to your system. It works with any language or framework — Laravel, CodeIgniter, Django, ASP.NET, Node.js and so on.</p>
+  <p>AttendBridge talks to your ERP through a small JSON API that you add to your system. It works with any language or framework — Laravel, CodeIgniter, Django, ASP.NET, Node.js and so on.</p>
   <table>
     <tr><th>Method</th><th>Path (under your API base URL)</th><th>Purpose</th></tr>
     <tr><td><code>GET</code></td><td><code>/zk/ping</code></td><td>Connection test (Settings → Test Connection)</td></tr>
@@ -404,7 +404,7 @@ class ZKController extends Controller
         return response()->json(['saved' => $saved]);
     }
 }</code></pre>
-  <p>Create a token for the bridge with <code>$user-&gt;createToken('zk-bridge')-&gt;plainTextToken</code> and paste it into <b>Settings → API Token</b>.</p>
+  <p>Create a token for the bridge with <code>$user-&gt;createToken('attendbridge')-&gt;plainTextToken</code> and paste it into <b>Settings → API Token</b>.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -469,7 +469,7 @@ class ZKController extends Controller
     <tr><td><code>0 * * * *</code></td><td>Every hour, on the hour</td></tr>
     <tr><td><code>0 6,18 * * *</code></td><td>Every day at 06:00 and 18:00</td></tr>
   </table>
-  <p>Times use the clock of the computer running ZK Bridge. Changes apply immediately without a restart.</p>
+  <p>Times use the clock of the computer running AttendBridge. Changes apply immediately without a restart.</p>
 
   <h3 id="attendance-rules">Attendance rules</h3>
   <p>In <b>Settings → Attendance Rules</b>, set when work starts and a grace period. An employee counts as <b>late</b> when their first punch of the day is after <i>start time + grace</i> — for example 09:00 + 15 minutes means 09:16 or later is late. The dashboard uses these rules; your ERP receives every punch unchanged.</p>
@@ -496,7 +496,7 @@ class ZKController extends Controller
 <section id="branding">
   <h2>Branding (white-label)</h2>
   <figure><img src="images/branding.png" alt="Branding settings"><figcaption>Settings → Branding (superadmin only).</figcaption></figure>
-  <p>Change how ZK Bridge looks for your users or your clients:</p>
+  <p>Change how AttendBridge looks for your users or your clients:</p>
   <ul>
     <li><b>App name</b> and <b>tagline</b> — shown in the sidebar, login page and browser tab.</li>
     <li><b>Logo</b> — PNG, JPG, WEBP or SVG up to 1 MB; also used as the browser icon. <b>Use Default</b> restores the original.</li>
@@ -520,7 +520,7 @@ class ZKController extends Controller
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="configuration">
   <h2>Configuration (.env)</h2>
-  <p>Most settings are managed from the app. The <code>.env</code> file in the main folder holds the rest; restart ZK Bridge after editing it.</p>
+  <p>Most settings are managed from the app. The <code>.env</code> file in the main folder holds the rest; restart AttendBridge after editing it.</p>
   <table>
     <tr><th>Key</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>PORT</code></td><td><code>3000</code></td><td>Web interface port.</td></tr>
@@ -562,10 +562,10 @@ class ZKController extends Controller
 <section id="updating">
   <h2>Updating</h2>
   <ol class="steps">
-    <li>Stop ZK Bridge (<code>stop.bat</code> / <code>./stop.sh</code>), or stop the service.</li>
+    <li>Stop AttendBridge (<code>stop.bat</code> / <code>./stop.sh</code>), or stop the service.</li>
     <li>Back up <code>.env</code> and the <code>data/</code> folder.</li>
     <li>Extract the new version over the old folder. Your <code>.env</code> and <code>data/</code> are not part of the package, so they are kept.</li>
-    <li>Run <code>npm install</code>, then start ZK Bridge again (or start the service).</li>
+    <li>Run <code>npm install</code>, then start AttendBridge again (or start the service).</li>
   </ol>
 </section>
 
@@ -582,7 +582,7 @@ class ZKController extends Controller
   </ul>
 
   <h4>“Port 3000 is already in use”</h4>
-  <p>Another program (or a second copy of ZK Bridge) uses the port. Stop it, or set a different <code>PORT</code> in <code>.env</code>.</p>
+  <p>Another program (or a second copy of AttendBridge) uses the port. Stop it, or set a different <code>PORT</code> in <code>.env</code>.</p>
 
   <h4>Test Connection to the ERP fails</h4>
   <ul>
@@ -607,7 +607,7 @@ class ZKController extends Controller
   <h4 id="forgot-password">I forgot the admin password</h4>
   <ol>
     <li>Add to <code>.env</code>: <code>MASTER_USERNAME=recovery</code> and <code>MASTER_PASSWORD=</code> followed by a strong temporary password.</li>
-    <li>Restart ZK Bridge and sign in with these details (they always have superadmin access).</li>
+    <li>Restart AttendBridge and sign in with these details (they always have superadmin access).</li>
     <li>Reset the password in <b>Administration → Users &amp; Roles</b>, then remove both lines from <code>.env</code> and restart.</li>
   </ol>
 
@@ -618,7 +618,7 @@ class ZKController extends Controller
   <p>There is no fixed limit. A typical office PC handles dozens of devices comfortably.</p>
 
   <h4>Can I start over with a fresh setup?</h4>
-  <p>Stop ZK Bridge, delete the <code>data/</code> folder (and <code>.env</code> if you also want to reset ports and ERP settings), then run <code>npm install</code> and start it again. The setup wizard will appear.</p>
+  <p>Stop AttendBridge, delete the <code>data/</code> folder (and <code>.env</code> if you also want to reset ports and ERP settings), then run <code>npm install</code> and start it again. The setup wizard will appear.</p>
 </section>
 
 <section id="changelog">
@@ -638,7 +638,7 @@ class ZKController extends Controller
 
 <section id="credits">
   <h2>Credits</h2>
-  <p>ZK Bridge is built with these open-source packages. Thank you to their authors.</p>
+  <p>AttendBridge is built with these open-source packages. Thank you to their authors.</p>
   <table>
     <tr><th>Package</th><th>License</th><th>Package</th><th>License</th></tr>
     <tr><td>Express</td><td>MIT</td><td>Socket.IO</td><td>MIT</td></tr>
@@ -647,7 +647,7 @@ class ZKController extends Controller
     <tr><td>dotenv</td><td>BSD-2-Clause</td><td>node-cron</td><td>ISC</td></tr>
     <tr><td>winston</td><td>MIT</td><td>node-windows (WinSW)</td><td>MIT</td></tr>
   </table>
-  <p>ZKTeco is a trademark of ZKTeco Co., Ltd. ZK Bridge is an independent product and is not affiliated with or endorsed by ZKTeco.</p>
+  <p>ZKTeco is a trademark of ZKTeco Co., Ltd. AttendBridge is an independent product and is not affiliated with or endorsed by ZKTeco.</p>
 </section>
 
 <section id="support">
@@ -662,7 +662,7 @@ class ZKController extends Controller
   <p>Support covers installation, configuration and bugs. Customisation and integration work for a specific ERP can be quoted separately.</p>
 </section>
 
-<footer>ZK Bridge · Developed by <a href="https://mestiaque.com" target="_blank" rel="noopener">M. Estiaque</a></footer>
+<footer>AttendBridge · Developed by <a href="https://mestiaque.com" target="_blank" rel="noopener">M. Estiaque</a></footer>
 </main>
 </div>
 </body>
