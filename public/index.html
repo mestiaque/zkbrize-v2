@@ -65,16 +65,20 @@
       </a>
     </div>
 
-    <div class="sidebar-bottom">
-      <div id="sidebar-user-info" style="padding:10px 16px 4px;font-size:12px;color:#888"></div>
-      <a href="/users" id="nav-users-link" style="display:none;padding:8px 16px;font-size:12px;color:var(--primary);text-decoration:none;align-items:center;gap:6px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-        Manage Users
+    <div class="nav-group" id="nav-admin-group" style="display:none">
+      <div class="nav-label">Administration</div>
+      <a class="nav-item" data-page="users" onclick="showPage('users',this)">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Users &amp; Roles
       </a>
-      <a href="/permissions" id="nav-perms-link" style="display:none;padding:8px 16px;font-size:12px;color:var(--primary);text-decoration:none;align-items:center;gap:6px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      <a class="nav-item" data-page="permissions" onclick="showPage('permissions',this)">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
         Interface Permissions
       </a>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div id="sidebar-user-info" style="padding:10px 16px 4px;font-size:12px;color:#888"></div>
       <button onclick="doLogout()" style="width:100%;padding:9px 16px;background:none;border:none;border-top:1px solid #f0f2f5;text-align:left;cursor:pointer;font-size:12px;color:#888;display:flex;align-items:center;gap:6px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         Logout
@@ -380,14 +384,14 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
   ]
 }
 
-// ZKController::storeAttendance() accepts:
+// ZKController::storeAttendance() receives:
 {
   "records": [
     {
-      "employee_id": "EMP001",
-      "time": "2024-01-15 09:00:00",
+      "employeeId": "EMP001",
+      "time": "2026-01-15 09:00:00",
       "status": "0",     // 0=check-in, 1=check-out
-      "device_id": "...",
+      "deviceId": "CQZ7224460123",
       "source": "adms"
     }
   ]
@@ -656,249 +660,162 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
       </div>
     </div>
 
+    <!-- Users & Roles Page -->
+    <div id="page-users" class="page">
+      <div class="section-header">
+        <div><h2>Users &amp; Roles</h2><p class="sub">Who can sign in, and what each role is allowed to do</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="openRoleModal(null)">+ Add Role</button>
+          <button class="btn btn-primary" onclick="openUserModal(null)">+ Add User</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Users</div></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Username</th><th>Role</th><th>Created</th><th style="width:150px">Actions</th></tr></thead>
+            <tbody id="users-tbody"><tr><td colspan="4" class="empty-cell">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <div class="card-header"><div class="card-title">Roles</div></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Role</th><th>Pages</th><th>Employees</th><th>Devices</th><th>Attendance</th><th style="width:150px">Actions</th></tr></thead>
+            <tbody id="roles-tbody"><tr><td colspan="6" class="empty-cell">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interface Permissions Page -->
+    <div id="page-permissions" class="page">
+      <div class="section-header">
+        <div><h2>Interface Permissions</h2><p class="sub">Turn pages and buttons off for every role at once. A user can use a feature only if both this page and their role allow it.</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="resetInterfacePerms()">Reset to Defaults</button>
+          <button class="btn btn-primary" onclick="saveInterfacePerms()">Save Permissions</button>
+        </div>
+      </div>
+      <div id="iperm-editor"></div>
+    </div>
+
     <!-- Guide Page -->
     <div id="page-guide" class="page">
       <div class="section-header">
-        <div><h2>User Guide</h2><p class="sub">Setup instructions, device configuration and API reference</p></div>
+        <div><h2>User Guide</h2><p class="sub">Connect devices, link your ERP and fix common problems</p></div>
       </div>
 
       <div class="guide-layout">
-
-        <!-- TOC -->
         <div class="guide-toc">
           <div class="guide-toc-title">Contents</div>
-          <a class="guide-toc-item" href="#g-quickstart">Quick Start</a>
-          <a class="guide-toc-item" href="#g-device">Device Settings</a>
-          <a class="guide-toc-item" href="#g-network">Network Setup</a>
-          <a class="guide-toc-item" href="#g-server">Server Settings</a>
-          <a class="guide-toc-item" href="#g-api">API Reference</a>
-          <a class="guide-toc-item" href="#g-laravel">ERP Example</a>
-          <a class="guide-toc-item" href="#g-trouble">Troubleshooting</a>
+          <a class="guide-toc-item" href="#g-quickstart" onclick="return guideJump(this)">Quick Start</a>
+          <a class="guide-toc-item" href="#g-adms" onclick="return guideJump(this)">ADMS Devices</a>
+          <a class="guide-toc-item" href="#g-tcp" onclick="return guideJump(this)">TCP/IP Devices</a>
+          <a class="guide-toc-item" href="#g-erp" onclick="return guideJump(this)">ERP API</a>
+          <a class="guide-toc-item" href="#g-sync" onclick="return guideJump(this)">Daily Use</a>
+          <a class="guide-toc-item" href="#g-trouble" onclick="return guideJump(this)">Troubleshooting</a>
         </div>
 
-        <!-- Content -->
         <div class="guide-content">
 
-          <!-- Quick Start -->
           <div class="guide-section" id="g-quickstart">
-            <div class="guide-section-title">
-              <span class="guide-num">1</span> Quick Start
-            </div>
+            <div class="guide-section-title"><span class="guide-num">1</span> Quick Start</div>
             <div class="guide-steps">
-              <div class="guide-step">
-                <div class="guide-step-num">1</div>
-                <div>Start the bridge server: <code>node src/server.js</code></div>
-              </div>
-              <div class="guide-step">
-                <div class="guide-step-num">2</div>
-                <div>Go to <strong>Settings</strong> → enter your API URLs → Save</div>
-              </div>
-              <div class="guide-step">
-                <div class="guide-step-num">3</div>
-                <div>On your ZKTeco device set Server Address to this machine's IP and Port to <strong>5015</strong></div>
-              </div>
-              <div class="guide-step">
-                <div class="guide-step-num">4</div>
-                <div>Restart the device — it will appear in <strong>Devices</strong> page automatically</div>
-              </div>
-              <div class="guide-step">
-                <div class="guide-step-num">5</div>
-                <div>Fingerprint punches will show in <strong>Attendance</strong> in real-time</div>
-              </div>
+              <div class="guide-step"><div class="guide-step-num">1</div><div>Open <strong>Settings</strong>, enter your <strong>ERP API Base URL</strong> and token, and click <strong>Test Connection</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">2</div><div>On each ADMS device, set the server to <code class="guide-ip"></code> port <code class="guide-port"></code> (see below). Older devices: add them on the <strong>Devices</strong> page.</div></div>
+              <div class="guide-step"><div class="guide-step-num">3</div><div>On <strong>Employees</strong>, click <strong>Load from ERP</strong>, then <strong>Set to Device</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">4</div><div>Punches appear on <strong>Attendance</strong> in real time. Turn on <strong>Attendance Push</strong> in Settings to send them to the ERP automatically.</div></div>
             </div>
           </div>
 
-          <!-- Device Settings -->
-          <div class="guide-section" id="g-device">
-            <div class="guide-section-title">
-              <span class="guide-num">2</span> Device Settings (ZKTeco MB10-VL)
-            </div>
-
-            <div class="guide-sub">Cloud Server Settings — <code>Menu → Comm → Cloud Server Settings</code></div>
+          <div class="guide-section" id="g-adms">
+            <div class="guide-section-title"><span class="guide-num">2</span> ADMS (push) Devices</div>
+            <p class="guide-sub">On the device: Menu → COMM → Cloud Server Setting (older models: Comm → ADMS)</p>
             <table class="guide-table">
               <thead><tr><th>Field</th><th>Value</th><th>Note</th></tr></thead>
               <tbody>
-                <tr><td>Server Mode</td><td><span class="tag tag-blue">ADMS</span></td><td>Must be ADMS, not ADMS2</td></tr>
-                <tr><td>Enable Domain Name</td><td><span class="tag">OFF</span></td><td>Use IP address directly</td></tr>
-                <tr><td>Server Address</td><td><code>192.168.x.x</code></td><td>This machine's LAN IP</td></tr>
-                <tr><td>Server Port</td><td><code>5015</code></td><td>Bridge ADMS port</td></tr>
-                <tr><td>HTTPS</td><td><span class="tag tag-red">OFF</span></td><td>No SSL — must be OFF</td></tr>
-                <tr><td>Enable Proxy Server</td><td><span class="tag">OFF</span></td><td></td></tr>
+                <tr><td>Server Mode</td><td><code>ADMS</code></td><td>If the device offers it</td></tr>
+                <tr><td>Enable Domain Name</td><td><code>OFF</code></td><td>Use the IP address</td></tr>
+                <tr><td>Server Address</td><td><code class="guide-ip"></code></td><td>This computer's LAN IP</td></tr>
+                <tr><td>Server Port</td><td><code class="guide-port"></code></td><td>ADMS port (Settings → ADMS Server Info)</td></tr>
+                <tr><td>HTTPS / Proxy</td><td><code>OFF</code></td><td></td></tr>
               </tbody>
             </table>
+            <div class="guide-alert guide-alert-warn" style="margin-top:12px">
+              Never enter <code>localhost</code> or <code>127.0.0.1</code> on a device. Give this computer a fixed IP and allow port <code class="guide-port"></code> in its firewall.
+            </div>
+          </div>
 
-            <div class="guide-sub" style="margin-top:16px">PC Connection — <code>Menu → Comm → PC Connection</code></div>
+          <div class="guide-section" id="g-tcp">
+            <div class="guide-section-title"><span class="guide-num">3</span> TCP/IP (pull) Devices</div>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-num">1</div><div>Give the device a fixed IP (Menu → COMM → Ethernet). Default TCP port is <code>4370</code>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">2</div><div>On <strong>Devices</strong>, use <strong>Network Ping Test</strong>, then <strong>Add TCP/IP Device</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">3</div><div>Read punches with <strong>Attendance → Fetch TCP</strong> or <strong>Sync Now</strong>.</div></div>
+            </div>
+          </div>
+
+          <div class="guide-section" id="g-erp">
+            <div class="guide-section-title"><span class="guide-num">4</span> ERP API</div>
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:10px">Your ERP needs three endpoints under the API Base URL. With a token set, requests send <code>Authorization: Bearer &lt;token&gt;</code>.</p>
             <table class="guide-table">
-              <thead><tr><th>Field</th><th>Value</th><th>Note</th></tr></thead>
+              <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
               <tbody>
-                <tr><td>Comm Key</td><td>—</td><td>Leave empty</td></tr>
-                <tr><td>Device ID</td><td><code>1</code></td><td>Keep as-is</td></tr>
-                <tr><td>TCP COMM Port</td><td><code>4370</code></td><td>Only needed for TCP/IP mode</td></tr>
-                <tr><td>HTTPS</td><td><span class="tag tag-red">OFF</span></td><td>Must be OFF</td></tr>
+                <tr><td><code>GET</code></td><td><code>/zk/ping</code></td><td>Connection test — any 2xx response</td></tr>
+                <tr><td><code>GET</code></td><td><code>/zk/employees</code></td><td>Employees for the devices</td></tr>
+                <tr><td><code>POST</code></td><td><code>/zk/attendance</code></td><td>Receives punches</td></tr>
               </tbody>
             </table>
-          </div>
-
-          <!-- Network -->
-          <div class="guide-section" id="g-network">
-            <div class="guide-section-title">
-              <span class="guide-num">3</span> Network Setup
-            </div>
-            <div class="guide-alert guide-alert-warn">
-              Device and server must be on the <strong>same subnet</strong>. The first 3 parts of the IP must match.
-            </div>
-            <table class="guide-table" style="margin-top:12px">
-              <thead><tr><th></th><th>IP Example</th><th>Subnet</th><th>Status</th></tr></thead>
+            <p class="guide-sub" style="margin-top:14px">GET /zk/employees — response</p>
+            <div class="code-block"><pre>{ "data": [
+  { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0 }
+] }</pre></div>
+            <p class="guide-sub" style="margin-top:14px">POST /zk/attendance — request body</p>
+            <div class="code-block"><pre>{ "records": [
+  { "employeeId": "1001", "time": "2026-10-10 08:42:04", "status": "0",
+    "deviceId": "CQZ7224460123", "source": "adms", "verifyMethod": "fingerprint" }
+] }</pre></div>
+            <table class="guide-table" style="margin-top:10px">
               <tbody>
-                <tr><td>Server</td><td><code>192.168.110.54</code></td><td>192.168.110.x</td><td><span class="tag tag-green">OK</span></td></tr>
-                <tr><td>Device</td><td><code>192.168.110.100</code></td><td>192.168.110.x</td><td><span class="tag tag-green">OK</span></td></tr>
-                <tr><td>Device (wrong)</td><td><code>192.168.0.203</code></td><td>192.168.0.x</td><td><span class="tag tag-red">FAIL</span></td></tr>
+                <tr><td><code>uid</code></td><td>Device user slot, 1–65535, unique per employee</td></tr>
+                <tr><td><code>employee_id</code> / <code>employeeId</code></td><td>The ID employees use on the device</td></tr>
+                <tr><td><code>status</code></td><td><code>0</code> Check-In, <code>1</code> Check-Out, <code>2</code> Break-Out, <code>3</code> Break-In, <code>4</code> OT-In, <code>5</code> OT-Out</td></tr>
+                <tr><td><code>time</code></td><td>Device local time, <code>YYYY-MM-DD HH:MM:SS</code></td></tr>
               </tbody>
             </table>
-            <div class="guide-sub" style="margin-top:14px">Check server IP:</div>
-            <div class="code-block"><pre>ip addr show
-# or
-hostname -I</pre></div>
-            <div class="guide-sub" style="margin-top:14px">Use <strong>Devices → Network Ping Test</strong> to verify connectivity before connecting.</div>
+            <div class="guide-alert guide-alert-info" style="margin-top:12px">
+              Reply with any 2xx status (optionally <code>{ "saved": 12 }</code>). Otherwise the records stay <em>New</em> and are sent again next time — so ignore duplicates on <code>employeeId + time + deviceId</code>. Different paths? Enter full URLs in Settings → Fetch Employee URL / Sync Attendance URL.
+            </div>
           </div>
 
-          <!-- Server Settings -->
-          <div class="guide-section" id="g-server">
-            <div class="guide-section-title">
-              <span class="guide-num">4</span> Server Settings
-            </div>
+          <div class="guide-section" id="g-sync">
+            <div class="guide-section-title"><span class="guide-num">5</span> Daily Use</div>
             <table class="guide-table">
-              <thead><tr><th>Setting</th><th>Description</th></tr></thead>
               <tbody>
-                <tr><td>Fetch Employee URL</td><td>Full URL where bridge fetches employees (GET)</td></tr>
-                <tr><td>Sync Attendance URL</td><td>Full URL where bridge pushes attendance (POST)</td></tr>
-                <tr><td>API Token</td><td>Bearer token — leave blank if route is public</td></tr>
-                <tr><td>ADMS Port</td><td>Default <code>5015</code> — set in <code>.env</code> as <code>ADMS_PORT</code></td></tr>
+                <tr><td><strong>Sync Now</strong></td><td>Fetches from TCP/IP devices and pushes all new records to the ERP.</td></tr>
+                <tr><td><strong>Employee Sync</strong></td><td>Settings → schedule: imports employees from the ERP and sends new ones to devices.</td></tr>
+                <tr><td><strong>Attendance Push</strong></td><td>Settings → schedule: sends new records to the ERP.</td></tr>
+                <tr><td><strong>Fetch ADMS</strong></td><td>Asks ADMS devices to upload punches stored before they were connected.</td></tr>
+                <tr><td><strong>CSV / DAT</strong></td><td>Employee export for ZKTeco software or USB import.</td></tr>
               </tbody>
             </table>
-            <div class="guide-sub" style="margin-top:14px"><code>.env</code> file reference:</div>
-            <div class="code-block"><pre>ADMS_PORT=5015
-FETCH_EMPLOYEE_URL=https://yourapp.com/fetch-employee
-SYNC_ATTENDANCE_URL=https://yourapp.com/sync-to-laravel
-LARAVEL_API_TOKEN=your-token-here</pre></div>
           </div>
 
-          <!-- API Reference -->
-          <div class="guide-section" id="g-api">
-            <div class="guide-section-title">
-              <span class="guide-num">5</span> API Reference
-            </div>
-
-            <div class="guide-sub">GET /fetch-employee — bridge calls this to get employees</div>
-            <div class="code-block"><pre>{
-  "data": [
-    {
-      "uid": 1,
-      "employee_id": "EMP001",
-      "name": "Rahim Uddin",
-      "privilege": 0,
-      "password": "",
-      "card": ""
-    }
-  ]
-}</pre></div>
-            <table class="guide-table" style="margin-top:10px">
-              <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-              <tbody>
-                <tr><td><code>uid</code></td><td>integer</td><td>ZKTeco internal ID (1–65535)</td></tr>
-                <tr><td><code>employee_id</code></td><td>string</td><td>Your HR system ID</td></tr>
-                <tr><td><code>name</code></td><td>string</td><td>Full name</td></tr>
-                <tr><td><code>privilege</code></td><td>integer</td><td><code>0</code> = User, <code>14</code> = Admin</td></tr>
-                <tr><td><code>password</code></td><td>string</td><td>Device PIN (leave empty)</td></tr>
-              </tbody>
-            </table>
-
-            <div class="guide-sub" style="margin-top:20px">POST /sync-to-laravel — bridge sends attendance here</div>
-            <div class="code-block"><pre>{
-  "records": [
-    {
-      "employee_id": "EMP001",
-      "time": "2024-06-22 09:15:30",
-      "status": "0",
-      "device_id": "CGXK241360001",
-      "source": "adms",
-      "verify": "1",
-      "received_at": "2024-06-22T03:15:31.000Z"
-    }
-  ]
-}</pre></div>
-            <table class="guide-table" style="margin-top:10px">
-              <thead><tr><th>Field</th><th>Value</th></tr></thead>
-              <tbody>
-                <tr><td><code>employee_id</code></td><td>Device registered PIN/ID</td></tr>
-                <tr><td><code>time</code></td><td>Punch time — <code>YYYY-MM-DD HH:MM:SS</code></td></tr>
-                <tr><td><code>status</code></td><td><code>0</code> = Check In &nbsp;|&nbsp; <code>1</code> = Check Out</td></tr>
-                <tr><td><code>verify</code></td><td><code>1</code> = Fingerprint &nbsp;|&nbsp; <code>2</code> = Face &nbsp;|&nbsp; <code>3</code> = Card</td></tr>
-                <tr><td><code>source</code></td><td><code>adms</code> or <code>tcp</code></td></tr>
-              </tbody>
-            </table>
-            <div class="guide-sub" style="margin-top:10px">Expected response from your server:</div>
-            <div class="code-block"><pre>{ "success": true, "saved": 1 }</pre></div>
-          </div>
-
-          <!-- ERP Example -->
-          <div class="guide-section" id="g-laravel">
-            <div class="guide-section-title">
-              <span class="guide-num">6</span> ERP Controller Example
-            </div>
-            <div class="code-block"><pre>// routes/api.php
-Route::get('/fetch-employee',   [ZKController::class, 'fetchEmployee']);
-Route::post('/sync-to-laravel', [ZKController::class, 'syncAttendance']);
-
-// ZKController.php
-public function fetchEmployee()
-{
-    $employees = Employee::all()->map(fn($e) => [
-        'uid'         => $e->id,
-        'employee_id' => $e->employee_id,
-        'name'        => $e->name,
-        'privilege'   => 0,
-        'password'    => '',
-    ]);
-    return response()->json(['data' => $employees]);
-}
-
-public function syncAttendance(Request $request)
-{
-    $records = $request->input('records', []);
-    foreach ($records as $rec) {
-        Attendance::updateOrCreate(
-            ['employee_id' => $rec['employee_id'], 'punch_time' => $rec['time']],
-            ['status' => $rec['status'], 'device_id' => $rec['device_id'], 'source' => $rec['source']]
-        );
-    }
-    return response()->json(['success' => true, 'saved' => count($records)]);
-}</pre></div>
-          </div>
-
-          <!-- Troubleshooting -->
           <div class="guide-section" id="g-trouble">
-            <div class="guide-section-title">
-              <span class="guide-num">7</span> Troubleshooting
-            </div>
+            <div class="guide-section-title"><span class="guide-num">6</span> Troubleshooting</div>
             <table class="guide-table">
-              <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+              <thead><tr><th>Problem</th><th>Check</th></tr></thead>
               <tbody>
-                <tr><td>Device not showing in Devices page</td><td>Check Server Address & Port on device. Ping test karon. Ensure same subnet.</td></tr>
-                <tr><td>Attendance showing Device: UNKNOWN</td><td>Server restart diye abar finger din. Check Logs page for RAW POST line.</td></tr>
-                <tr><td>Ping test fails</td><td>Device & server different subnet-e. Device IP change kore server-er subnet-e ano.</td></tr>
-                <tr><td>ERP test fails</td><td>API URL check karon — sheshe <code>/api</code> ache kina. Token sothik ache kina.</td></tr>
-                <tr><td>Attendance not pushing to ERP</td><td>Sync Attendance URL set ache kina Settings-e check karon. Logs-e error dekhan.</td></tr>
-                <tr><td>ADMS not connecting</td><td>Device-e HTTPS must be OFF. Port 5015. Server firewall port 5015 open ache kina.</td></tr>
-                <tr><td>Employee fetch fails</td><td>Fetch Employee URL set ache kina. API response format check karon — <code>data</code> array dorkar.</td></tr>
+                <tr><td>Device not on the Devices page</td><td>Server address/port on the device, firewall, and that device and computer are on the same network (Ping Test). Restart the device and watch <strong>Logs</strong> for <code>ADMS handshake</code>.</td></tr>
+                <tr><td>Test Connection fails</td><td><code>401/403</code>: wrong token. <code>404</code>: wrong base URL (include <code>/api</code> if your routes use it).</td></tr>
+                <tr><td>Records stay “New”</td><td>Turn on Attendance Push, click <strong>Push to ERP</strong> and read the message and Logs.</td></tr>
+                <tr><td>Name not updated on device</td><td>ADMS devices apply changes on their next check-in (about 30 seconds).</td></tr>
               </tbody>
             </table>
-
-            <div class="guide-alert guide-alert-info" style="margin-top:16px">
-              <strong>Logs page</strong> — server-er sob activity dekhte paben. ADMS connection hole dekhaben:<br>
-              <code style="font-size:11px">ADMS handshake from SN=XXXXXX ip=192.168.x.x</code><br>
-              <code style="font-size:11px">ADMS XXXXXX saved 1 attendance records</code>
-            </div>
           </div>
 
         </div><!-- /guide-content -->
@@ -914,6 +831,55 @@ public function syncAttendance(Request $request)
 <!-- Load from Machine Modal removed — loads directly from bridge store -->
 
 <!-- Create / Edit Employee Modal -->
+<div id="modal-user" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-user')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="user-modal-title">Add User</div>
+      <button class="modal-close" onclick="closeModal('modal-user')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="f-username" maxlength="32" autocomplete="off" placeholder="e.g. john">
+      </div>
+      <div class="form-group">
+        <label id="f-pass-label">Password</label>
+        <input type="password" id="f-password" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="f-role"></select>
+      </div>
+      <div id="user-err" style="color:var(--red);font-size:13px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-role" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-role')">
+  <div class="modal-box" style="max-width:620px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title" id="role-modal-title">Add Role</div>
+      <button class="modal-close" onclick="closeModal('modal-role')">&times;</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto">
+      <div class="form-group" id="role-name-group">
+        <label>Role Name</label>
+        <input type="text" id="f-role-name" maxlength="32" placeholder="e.g. operator">
+      </div>
+      <div id="role-perm-editor"></div>
+      <div id="role-err" style="color:var(--red);font-size:13px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-role')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRole()">Save Role</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-employee" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-employee')">
   <div class="modal-box">
     <div class="modal-header">
@@ -959,6 +925,7 @@ public function syncAttendance(Request $request)
 </div>
 
 <script src="js/app.js"></script>
+<script src="js/admin.js"></script>
 
 <div id="footer-copyright" style="position:fixed;bottom:0;left:240px;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 24px;font-size:11px;color:var(--text-3);display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:10">
   <span>&copy; <span id="footer-year"></span> <span id="footer-company"></span></span>

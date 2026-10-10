@@ -10,19 +10,21 @@ const MASTER_PASSWORD = process.env.MASTER_PASSWORD || '';
 
 // ── Default roles ──────────────────────────────────────────────────
 
-const FULL_PERMISSIONS = {
-  nav: { dashboard: true, devices: true, employees: true, attendance: true, logs: true, settings: true, guide: true },
-  employees: { btn_load_laravel: true, btn_load_machine: true, btn_set_device: true, btn_add_employee: true, export_csv: true, export_dat: true, card_export_guide: true, card_api_docs: true },
-  devices: { card_add_tcp: true, card_adms_info: true, card_ping_test: true },
-  attendance: { btn_fetch: true, btn_push_laravel: true },
-};
+const { DEFAULT_PERMISSIONS } = require('./store');
 
-const VIEWER_PERMISSIONS = {
-  nav: { dashboard: true, devices: false, employees: true, attendance: true, logs: false, settings: false, guide: true },
-  employees: { btn_load_laravel: false, btn_load_machine: false, btn_set_device: false, btn_add_employee: false, export_csv: false, export_dat: false, card_export_guide: false, card_api_docs: false },
-  devices: { card_add_tcp: false, card_adms_info: false, card_ping_test: false },
-  attendance: { btn_fetch: false, btn_push_laravel: false },
-};
+// Built from the complete permission list so no key is ever left out
+function permissionsWith(fn) {
+  const out = {};
+  for (const [section, items] of Object.entries(DEFAULT_PERMISSIONS)) {
+    out[section] = {};
+    for (const key of Object.keys(items)) out[section][key] = fn(section, key);
+  }
+  return out;
+}
+
+const VIEWER_ALLOWED = ['nav.dashboard', 'nav.employees', 'nav.attendance', 'nav.guide', 'attendance.date_range'];
+const FULL_PERMISSIONS = permissionsWith(() => true);
+const VIEWER_PERMISSIONS = permissionsWith((section, key) => VIEWER_ALLOWED.includes(`${section}.${key}`));
 
 const DEFAULT_ROLES = [
   { id: 'superadmin', name: 'superadmin', locked: true,  permissions: JSON.parse(JSON.stringify(FULL_PERMISSIONS)) },
@@ -70,7 +72,9 @@ function deleteRole(id) {
   const roles = loadRoles();
   const idx = roles.findIndex(r => r.id === id);
   if (idx === -1) return { success: false, error: 'Role not found' };
-  if (roles[idx].locked) return { success: false, error: 'Built-in role cannot be deleted' };
+  if (roles[idx].locked || ['admin', 'viewer'].includes(id)) return { success: false, error: 'Built-in role cannot be deleted' };
+  const inUse = loadUsers().filter(u => u.role === id).length;
+  if (inUse) return { success: false, error: `${inUse} user(s) still have this role. Change their role first.` };
   roles.splice(idx, 1);
   saveRoles(roles);
   return { success: true };
@@ -163,6 +167,8 @@ async function verifyLogin(username, password) {
   return safeUser(user);
 }
 
+function masterEnabled() { return !!MASTER_PASSWORD; }
+
 function hasAnyLogin() {
   return !!MASTER_PASSWORD || loadUsers().length > 0;
 }
@@ -208,23 +214,26 @@ function allTrue(defaults) {
   return out;
 }
 
+// The role's permissions with every key filled in (same fallback rules as below)
+function resolveRolePermissions(role) {
+  const builtIn = DEFAULT_ROLES.find(r => r.id === role.id)?.permissions;
+  return permissionsWith((section, key) => {
+    const saved = role.permissions?.[section]?.[key];
+    return typeof saved === 'boolean' ? saved : builtIn?.[section]?.[key] === true;
+  });
+}
+
 function getEffectivePermissions(user) {
-  const { store, DEFAULT_PERMISSIONS } = require('./store');
+  const { store } = require('./store');
   if (!user) return {};
   if (user.role === 'superadmin') return allTrue(DEFAULT_PERMISSIONS);
   const role = loadRoles().find(r => r.id === user.role);
-  const rolePerms = role?.permissions || {};
+  if (!role) return permissionsWith(() => false);
+  // A key missing from a saved role (e.g. added in a later version) falls back to
+  // the built-in role's default, and is denied for custom roles
+  const rolePerms = resolveRolePermissions(role);
   const globalPerms = store.permissions || {};
-  const out = {};
-  for (const [section, items] of Object.entries(DEFAULT_PERMISSIONS)) {
-    out[section] = {};
-    for (const key of Object.keys(items)) {
-      out[section][key] = !!role &&
-        rolePerms[section]?.[key] !== false &&
-        globalPerms[section]?.[key] !== false;
-    }
-  }
-  return out;
+  return permissionsWith((section, key) => rolePerms[section][key] && globalPerms[section]?.[key] !== false);
 }
 
 // ── Middleware ─────────────────────────────────────────────────────
@@ -280,9 +289,9 @@ function requirePerm(...keys) {
 
 module.exports = {
   requireAuth, requireAdmin, requireSuperAdmin, requirePerm,
-  verifyLogin, hasAnyLogin, getEffectivePermissions,
+  verifyLogin, hasAnyLogin, masterEnabled, getEffectivePermissions,
   loginLockedFor, recordLoginFailure, clearLoginFailures,
-  findUserById, roleExists, DEFAULT_ROLES,
+  findUserById, roleExists, DEFAULT_ROLES, resolveRolePermissions,
   createUser, updateUser, deleteUser, listUsers, loadUsers,
   createRole, updateRole, deleteRole, loadRoles,
   MASTER_USERNAME,

@@ -12,7 +12,7 @@ const { store, loadConfigFile } = require('./store');
 const { ensureDataFiles } = require('./datafiles');
 const routes = require('./routes');
 const authRoutes = require('./authRoutes');
-const { requireAuth, requireSuperAdmin } = require('./auth');
+const { requireAuth } = require('./auth');
 const { installRouter, isInstalled } = require('./install');
 const branding = require('./branding');
 const { setEnvValues } = require('./envfile');
@@ -116,8 +116,6 @@ app.use(requireAuth);
 
 app.use(express.static(publicDir, { index: 'index.html' }));
 app.use('/api', routes);
-app.get('/permissions', requireSuperAdmin, (req, res) => res.sendFile(path.join(__dirname, '../public/permissions.html')));
-app.get('/users', requireSuperAdmin, (req, res) => res.sendFile(path.join(__dirname, '../public/users.html')));
 
 // ── Socket.IO ──────────────────────────────────────────────────────
 io.on('connection', (socket) => {

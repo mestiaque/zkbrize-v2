@@ -122,6 +122,8 @@ async function full() {
   await req('POST', '/api/auth/login', { username: 'civiewer', password: 'Viewer12345' });
   const forbidden = await req('POST', '/api/config', { syncSchedule: '*/5 * * * *' });
   ok(forbidden.status === 403, 'viewer cannot change settings');
+  const delEmp = await req('DELETE', '/api/employees/1');
+  ok(delEmp.status === 403, 'viewer cannot delete employees');
   cookie = adminCookie;
 
   const anon = await fetch(BASE + '/api/state');

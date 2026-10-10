@@ -43,7 +43,7 @@ and the company name/website shown in the footer.
 
 ### Forgot the admin password?
 Set `MASTER_USERNAME` and `MASTER_PASSWORD` in `.env`, restart, sign in with them and reset the
-password from **Manage Users**. Then clear both values again.
+password from **Administration → Users & Roles**. Then clear both values again.
 
 ---
 

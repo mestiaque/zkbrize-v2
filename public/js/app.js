@@ -703,6 +703,8 @@ async function loadSettings() {
     setText('settings-adms-url', `http://${host}:${port}`);
     setText('adms-port-display', port);
     setText('adms-address', host);
+    document.querySelectorAll('.guide-ip').forEach(el => { el.textContent = host; });
+    document.querySelectorAll('.guide-port').forEach(el => { el.textContent = port; });
     setVal('set-adms-port', port);
 
     // Sync toggles
@@ -903,19 +905,45 @@ function renderSidebarStatus() {
 }
 
 // ── Page navigation ───────────────────────────────────────────────
+const PAGE_TITLES = {
+  dashboard: 'Dashboard', devices: 'Devices', employees: 'Employees', attendance: 'Attendance',
+  logs: 'Logs', settings: 'Settings', guide: 'User Guide',
+  users: 'Users & Roles', permissions: 'Interface Permissions',
+};
+
+// A page can be opened only if its sidebar item is visible for this user
+function canOpenPage(name) {
+  const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
+  return !!document.getElementById('page-' + name) && !!nav && nav.offsetParent !== null;
+}
+
 function showPage(name, el) {
+  if (!canOpenPage(name)) name = 'dashboard';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  if (el) el.classList.add('active');
-  else document.querySelector(`[data-page=${name}]`)?.classList.add('active');
-  setText('page-title', name.charAt(0).toUpperCase() + name.slice(1));
-  localStorage.setItem('activePage', name);
+  (el || document.querySelector(`.nav-item[data-page="${name}"]`))?.classList.add('active');
+  setText('page-title', PAGE_TITLES[name] || name);
+  try { localStorage.setItem('activePage', name); } catch {}
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
 
   if (name === 'logs') loadLogs();
   if (name === 'settings') loadSettings();
   if (name === 'employees') loadBridgeEmployees();
+  if (name === 'users') loadUsersPage();
+  if (name === 'permissions') loadInterfacePermsPage();
 }
+
+// Guide contents links scroll inside the page (the URL hash is used for page routing)
+function guideJump(a) {
+  document.getElementById(a.getAttribute('href').slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return false;
+}
+
+window.addEventListener('hashchange', () => {
+  const name = location.hash.slice(1);
+  if (name && !document.getElementById('page-' + name)?.classList.contains('active')) showPage(name);
+});
 
 // ── Helpers ───────────────────────────────────────────────────────
 async function api(path, body, method) {
@@ -1032,11 +1060,8 @@ async function loadCurrentUser() {
     const user = await res.json();
     const info = document.getElementById('sidebar-user-info');
     if (info) info.textContent = user.username + ' (' + user.role + ')';
-    const usersLink = document.getElementById('nav-users-link');
-    if (usersLink && user.role === 'superadmin') usersLink.style.display = 'flex';
-    const permsLink = document.getElementById('nav-perms-link');
-    if (permsLink && user.role === 'superadmin') permsLink.style.display = 'flex';
     if (user.role === 'superadmin') {
+      document.getElementById('nav-admin-group').style.display = '';
       document.getElementById('card-branding').style.display = '';
       fillBrandingForm(window.BRANDING);
       document.addEventListener('branding', e => fillBrandingForm(e.detail));
@@ -1102,12 +1127,13 @@ function initDashboardGreeting() {
   if (d) d.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadCurrentUser();
-  applyPermissions();
+document.addEventListener('DOMContentLoaded', async () => {
   initDashboardGreeting();
-  const savedPage = localStorage.getItem('activePage') || 'dashboard';
-  showPage(savedPage);
+  // Know the user's role and permissions before choosing which page to open
+  await Promise.all([loadCurrentUser(), applyPermissions()]);
+  let saved = null;
+  try { saved = localStorage.getItem('activePage'); } catch {}
+  showPage(location.hash.slice(1) || saved || 'dashboard');
   fetchState();
   loadSettings();
   setInterval(fetchState, 30000);

@@ -5,7 +5,7 @@ const {
   createRole, updateRole, deleteRole, loadRoles,
   requireAdmin, requireSuperAdmin, MASTER_USERNAME,
   loginLockedFor, recordLoginFailure, clearLoginFailures,
-  findUserById, roleExists, getEffectivePermissions,
+  findUserById, roleExists, getEffectivePermissions, masterEnabled, resolveRolePermissions,
 } = require('./auth');
 
 const USERNAME_RE = /^[A-Za-z0-9._@-]{3,32}$/;
@@ -55,7 +55,7 @@ router.get('/me', (req, res) => {
 // ── Users (admin + superadmin) ─────────────────────────────────────
 
 router.get('/users', requireAdmin, (req, res) => {
-  res.json({ users: listUsers(), masterUser: MASTER_USERNAME });
+  res.json({ users: listUsers(), masterUser: MASTER_USERNAME, masterEnabled: masterEnabled() });
 });
 
 router.post('/users/create', requireAdmin, (req, res) => {
@@ -98,7 +98,7 @@ router.post('/users/delete', requireAdmin, (req, res) => {
 // ── Roles (admin + superadmin) ─────────────────────────────────────
 
 router.get('/roles', requireAdmin, (req, res) => {
-  res.json({ roles: loadRoles() });
+  res.json({ roles: loadRoles().map(r => ({ ...r, permissions: resolveRolePermissions(r) })) });
 });
 
 router.post('/roles/create', requireAdmin, (req, res) => {

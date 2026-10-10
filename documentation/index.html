@@ -106,6 +106,7 @@
   <a href="#users">Users, roles &amp; permissions</a>
   <a href="#branding">Branding (white-label)</a>
   <a href="#logs">Logs</a>
+  <a href="#user-guide">Built-in User Guide</a>
   <div class="group">Reference</div>
   <a href="#configuration">Configuration (.env)</a>
   <a href="#data">Where data is stored</a>
@@ -459,16 +460,18 @@ class ZKController extends Controller
 
 <section id="users">
   <h2>Users, roles &amp; permissions</h2>
-  <figure><img src="images/users.png" alt="User management"><figcaption>Manage Users: accounts and roles.</figcaption></figure>
-  <p>Open <b>Manage Users</b> at the bottom of the sidebar (superadmin only). Three roles are built in:</p>
+  <figure><img src="images/users.png" alt="User management"><figcaption>Administration → Users &amp; Roles.</figcaption></figure>
+  <p>Superadmins see an <b>Administration</b> group in the sidebar with <b>Users &amp; Roles</b> and <b>Interface Permissions</b>. Three roles are built in:</p>
   <table>
     <tr><th>Role</th><th>Access</th></tr>
     <tr><td><b>superadmin</b></td><td>Everything, including users, permissions and branding. Cannot be edited or removed by an admin.</td></tr>
     <tr><td><b>admin</b></td><td>Everything in the app except user management, interface permissions and branding.</td></tr>
-    <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the user guide.</td></tr>
+    <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the User Guide.</td></tr>
   </table>
   <p>You can create your own roles and choose exactly which pages and buttons each role may use. Permissions are enforced by the server, not only hidden in the interface.</p>
-  <p><b>Interface Permissions</b> (also at the bottom of the sidebar, superadmin only) switches pages and buttons off for <i>every</i> role at once — for example, to hide the CSV/DAT export everywhere. A user can use a feature only if both their role and the interface permissions allow it.</p>
+  <p><b>Interface Permissions</b> switches pages and buttons off for <i>every</i> role at once — for example, to hide the CSV/DAT export everywhere. A user can use a feature only if both their role and the interface permissions allow it.</p>
+  <figure><img src="images/permissions.png" alt="Interface permissions"><figcaption>Administration → Interface Permissions.</figcaption></figure>
+  <p>A role or user that is still in use cannot be deleted by mistake: change the users' role first. You cannot delete your own account.</p>
   <div class="box note"><p><b>Security:</b> after 5 wrong passwords for the same account, sign-in from that computer is blocked for 15 minutes. Passwords are stored as bcrypt hashes.</p></div>
 </section>
 
@@ -488,6 +491,12 @@ class ZKController extends Controller
   <h2>Logs</h2>
   <figure><img src="images/logs.png" alt="Logs page"><figcaption>Server log and sync history.</figcaption></figure>
   <p>The <b>Logs</b> page shows the latest server messages — device connections, every ADMS request, sync results and errors. It is the first place to look when a device does not appear or a sync fails. Log files are kept in the <code>logs/</code> folder and rotated automatically (5 × 5 MB).</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="user-guide">
+  <h2>Built-in User Guide</h2>
+  <p>The <b>User Guide</b> page inside the app is a short version of this document for everyday users: quick start, the exact ADMS settings to enter on a device (filled in with this computer's IP address and ADMS port), the ERP API format and common problems.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -569,7 +578,7 @@ class ZKController extends Controller
   <ol>
     <li>Add to <code>.env</code>: <code>MASTER_USERNAME=recovery</code> and <code>MASTER_PASSWORD=</code> followed by a strong temporary password.</li>
     <li>Restart ZK Bridge and sign in with these details (they always have superadmin access).</li>
-    <li>Reset the password in <b>Manage Users</b>, then remove both lines from <code>.env</code> and restart.</li>
+    <li>Reset the password in <b>Administration → Users &amp; Roles</b>, then remove both lines from <code>.env</code> and restart.</li>
   </ol>
 
   <h4>Can I run the bridge on the same server as my ERP?</h4>
