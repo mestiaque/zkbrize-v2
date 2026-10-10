@@ -45,7 +45,7 @@ router.get('/analytics', requirePerm('nav.dashboard'), (req, res) => {
 
 // ── State ──────────────────────────────────────────────────────────
 router.get('/state', (req, res) => {
-  res.json(getState());
+  res.json(getState(getEffectivePermissions(req.session.user)));
 });
 
 // ── Config ─────────────────────────────────────────────────────────
@@ -63,10 +63,12 @@ router.get('/config', (req, res) => {
   }
 
   const canSettings = getEffectivePermissions(req.session.user).nav?.settings === true;
+  // Without Settings access, only what the Devices page and User Guide need
+  if (!canSettings) return res.json({ admsPort: store.config.admsPort, serverIp });
   res.json({
-    laravelApiUrl: canSettings ? store.config.laravelApiUrl : '',
-    fetchEmployeeUrl: canSettings ? store.config.fetchEmployeeUrl : '',
-    syncAttendanceUrl: canSettings ? store.config.syncAttendanceUrl : '',
+    laravelApiUrl: store.config.laravelApiUrl,
+    fetchEmployeeUrl: store.config.fetchEmployeeUrl,
+    syncAttendanceUrl: store.config.syncAttendanceUrl,
     admsPort: store.config.admsPort,
     syncSchedule: store.config.syncSchedule,
     attendanceFetchSchedule: store.config.attendanceFetchSchedule,

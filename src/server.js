@@ -12,7 +12,7 @@ const { store, loadConfigFile, saveAttendanceFile, pruneAttendance } = require('
 const { ensureDataFiles } = require('./datafiles');
 const routes = require('./routes');
 const authRoutes = require('./authRoutes');
-const { requireAuth, ensureOwner } = require('./auth');
+const { requireAuth, ensureOwner, getEffectivePermissions } = require('./auth');
 const { installRouter, isInstalled } = require('./install');
 const branding = require('./branding');
 const { setEnvValues } = require('./envfile');
@@ -77,9 +77,17 @@ io.use((socket, next) => {
   if (socket.request.session?.user) return next();
   next(new Error('Unauthorized'));
 });
-admsSetIO(io);
-tcpSetIO(io);
-schedSetIO(io);
+// Live punches go only to sockets allowed to see attendance; other events to all
+const ATTENDANCE_ROOM = 'can-see-attendance';
+const liveEvents = {
+  emit(event, data) {
+    if (event === 'attendance') io.to(ATTENDANCE_ROOM).emit(event, data);
+    else io.emit(event, data);
+  },
+};
+admsSetIO(liveEvents);
+tcpSetIO(liveEvents);
+schedSetIO(liveEvents);
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -126,8 +134,10 @@ app.use('/api', routes);
 // ── Socket.IO ──────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   logger.info(`UI connected: ${socket.id}`);
-  const { getState } = require('./store');
-  socket.emit('init', getState());
+  const { getState, canSee } = require('./store');
+  const perms = getEffectivePermissions(socket.request.session.user);
+  if (canSee(perms, 'attendance')) socket.join(ATTENDANCE_ROOM);
+  socket.emit('init', getState(perms));
   socket.on('disconnect', () => logger.info(`UI disconnected: ${socket.id}`));
 });
 

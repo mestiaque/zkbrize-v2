@@ -294,17 +294,29 @@ function updateStats() {
   ).length;
 }
 
-function getState() {
+// What a user may see, based on their effective permissions (see auth.js)
+function canSee(perms, what) {
+  const nav = perms?.nav || {};
+  if (what === 'attendance') return !!(nav.attendance || nav.dashboard);
+  if (what === 'devices') return !!(nav.devices || nav.dashboard || nav.employees || nav.attendance);
+  if (what === 'syncLog') return !!nav.dashboard;
+  if (what === 'settings') return !!nav.settings;
+  return false;
+}
+
+function getState(perms) {
   return {
-    devices: Object.values(store.devices),
-    attendanceLogs: store.attendanceLogs.slice(0, 2000),
-    syncLog: store.syncLog.slice(0, 20),
-    stats: store.stats,
+    devices: canSee(perms, 'devices') ? Object.values(store.devices) : [],
+    attendanceLogs: canSee(perms, 'attendance') ? store.attendanceLogs.slice(0, 2000) : [],
+    syncLog: canSee(perms, 'syncLog') ? store.syncLog.slice(0, 20) : [],
+    stats: canSee(perms, 'attendance') ? store.stats : {},
     config: {
-      laravelApiUrl: store.config.laravelApiUrl,
       admsPort: store.config.admsPort,
-      syncSchedule: store.config.syncSchedule,
-      hasToken: !!store.config.laravelApiToken,
+      ...(canSee(perms, 'settings') ? {
+        laravelApiUrl: store.config.laravelApiUrl,
+        syncSchedule: store.config.syncSchedule,
+        hasToken: !!store.config.laravelApiToken,
+      } : {}),
     },
   };
 }
@@ -322,6 +334,7 @@ module.exports = {
   markEmployeesSynced,
   clearLogs,
   getState,
+  canSee,
   savePermissions,
   DEFAULT_PERMISSIONS,
   loadConfigFile,

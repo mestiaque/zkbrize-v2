@@ -254,7 +254,10 @@ function getEffectivePermissions(user) {
   // the built-in role's default, and is denied for custom roles
   const rolePerms = resolveRolePermissions(role);
   const globalPerms = store.permissions || {};
-  return permissionsWith((section, key) => rolePerms[section][key] && globalPerms[section]?.[key] !== false);
+  const allowed = (section, key) => rolePerms[section]?.[key] === true && globalPerms[section]?.[key] !== false;
+  // A page's buttons and cards are off whenever the page itself is off
+  return permissionsWith((section, key) =>
+    allowed(section, key) && (section === 'nav' || allowed('nav', section)));
 }
 
 // ── Middleware ─────────────────────────────────────────────────────

@@ -1021,13 +1021,19 @@ function canOpenPage(name) {
   return !!document.getElementById('page-' + name) && !!nav && nav.offsetParent !== null;
 }
 
+// First page in the sidebar this user may open, or the "no access" page
+function firstAllowedPage() {
+  const nav = [...document.querySelectorAll('.nav-item[data-page]')].find(n => canOpenPage(n.dataset.page));
+  return nav ? nav.dataset.page : 'noaccess';
+}
+
 function showPage(name, el) {
-  if (!canOpenPage(name)) name = 'dashboard';
+  if (name !== 'noaccess' && !canOpenPage(name)) { name = firstAllowedPage(); el = null; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   (el || document.querySelector(`.nav-item[data-page="${name}"]`))?.classList.add('active');
-  setText('page-title', PAGE_TITLES[name] || name);
+  setText('page-title', PAGE_TITLES[name] || (name === 'noaccess' ? '' : name));
   try { localStorage.setItem('activePage', name); } catch {}
   if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
 
@@ -1129,7 +1135,7 @@ const PERM_SELECTORS = {
   'attendance.date_range':        '#att-date-range-wrap',
   'attendance.btn_fetch':        '#btn-fetch-attendance',
   'attendance.btn_fetch_adms':   '#btn-fetch-adms',
-  'attendance.btn_push_laravel': '#btn-push-laravel',
+  'attendance.btn_push_laravel': '#btn-push-laravel, #btn-sync-now',
 };
 
 let currentPermissions = {};
@@ -1151,6 +1157,11 @@ async function applyPermissions() {
         el.style.display = allowed ? (PERM_DISPLAY_OVERRIDE[selector] || '') : 'none';
       });
     }
+    // Hide sidebar group headings that have no visible items left
+    document.querySelectorAll('.sidebar .nav-group:not(#nav-admin-group)').forEach(group => {
+      const anyVisible = [...group.querySelectorAll('.nav-item')].some(i => i.style.display !== 'none');
+      group.style.display = anyVisible ? '' : 'none';
+    });
   } catch (e) { console.warn('Could not load permissions', e); }
 }
 

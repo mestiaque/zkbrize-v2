@@ -142,6 +142,39 @@ async function full() {
   ok(delEmp.status === 403, 'viewer cannot delete employees');
   cookie = adminCookie;
 
+  // A role that may only open the User Guide: every other URL must be refused,
+  // even a button whose own switch is on while its page is off
+  const allOff = {};
+  for (const [section, items] of Object.entries((await req('GET', '/api/permissions')).data.defaults)) {
+    allOff[section] = Object.fromEntries(Object.keys(items).map(k => [k, false]));
+  }
+  allOff.nav.guide = true;
+  allOff.devices.card_ping_test = true; // page "devices" is off, so this must still be denied
+  await req('POST', '/api/auth/roles/create', { name: 'guideonly', permissions: allOff });
+  await req('POST', '/api/auth/users/create', { username: 'ciguide', password: 'Guide12345', role: 'guideonly' });
+  const ownerCookie2 = cookie;
+  cookie = '';
+  await req('POST', '/api/auth/login', { username: 'ciguide', password: 'Guide12345' });
+  const blocked = {
+    'GET /api/analytics': await req('GET', '/api/analytics'),
+    'GET /api/attendance': await req('GET', '/api/attendance'),
+    'GET /api/employees': await req('GET', '/api/employees'),
+    'GET /api/employees/export.csv': await req('GET', '/api/employees/export.csv'),
+    'GET /api/logs': await req('GET', '/api/logs'),
+    'GET /api/devices/ping': await req('GET', '/api/devices/ping?ip=127.0.0.1'),
+    'POST /api/laravel/sync-all': await req('POST', '/api/laravel/sync-all', {}),
+    'POST /api/config': await req('POST', '/api/config', { syncSchedule: '*/5 * * * *' }),
+    'GET /api/auth/users': await req('GET', '/api/auth/users'),
+  };
+  for (const [what, r] of Object.entries(blocked)) ok(r.status === 403, `limited role blocked: ${what}`);
+  const st = (await req('GET', '/api/state')).data;
+  ok(st && st.attendanceLogs.length === 0 && st.devices.length === 0 && !('laravelApiUrl' in st.config), 'limited role: /api/state holds no attendance, devices or settings');
+  const cfg = (await req('GET', '/api/config')).data;
+  ok(cfg && !('laravelApiUrl' in cfg) && !('syncSchedule' in cfg), 'limited role: /api/config holds no settings');
+  const myPerms = (await req('GET', '/api/permissions')).data.permissions;
+  ok(myPerms.devices.card_ping_test === false, 'button is off when its page is off');
+  cookie = ownerCookie2;
+
   const anon = await fetch(BASE + '/api/state');
   ok(anon.status === 401, 'API requires login');
 

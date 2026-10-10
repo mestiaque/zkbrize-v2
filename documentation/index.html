@@ -485,7 +485,7 @@ class ZKController extends Controller
     <tr><td><b>admin</b></td><td>Everything in the app except user management, interface permissions and branding.</td></tr>
     <tr><td><b>viewer</b></td><td>Read-only: dashboard, employees, attendance and the User Guide.</td></tr>
   </table>
-  <p>You can create your own roles and choose exactly which pages and buttons each role may use. Permissions are enforced by the server, not only hidden in the interface.</p>
+  <p>You can create your own roles and choose exactly which pages and buttons each role may use. Permissions are enforced by the server, not only hidden in the interface: typing a page address, calling the API directly or listening for live updates gives a user nothing their role does not allow. When a page is switched off, all of its buttons are off too. A user who opens a page they may not use is taken to the first page they can use.</p>
   <p><b>Interface Permissions</b> switches pages and buttons off for <i>every</i> role at once — for example, to hide the CSV/DAT export everywhere. A user can use a feature only if both their role and the interface permissions allow it.</p>
   <figure><img src="images/permissions.png" alt="Interface permissions"><figcaption>Administration → Interface Permissions.</figcaption></figure>
   <p>A role or user that is still in use cannot be deleted by mistake: change the users' role first. You cannot delete your own account.</p>
