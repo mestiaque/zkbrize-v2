@@ -148,7 +148,7 @@
     <div class="feature"><b>TCP/IP pull</b><span>Older devices without ADMS are read over the network.</span></div>
     <div class="feature"><b>Two-way ERP sync</b><span>Employees from ERP → devices, attendance from devices → ERP.</span></div>
     <div class="feature"><b>Automatic schedules</b><span>Sync employees and push attendance on a timetable you choose.</span></div>
-    <div class="feature"><b>Live dashboard</b><span>Devices, punches and sync history update live in the browser.</span></div>
+    <div class="feature"><b>Attendance analytics</b><span>Present, late and absent today, a 7-day trend, arrivals by hour, methods and devices.</span></div>
     <div class="feature"><b>Employee management</b><span>Add, edit and delete users on devices; export CSV and user.dat.</span></div>
     <div class="feature"><b>Users &amp; roles</b><span>Multiple accounts with fine-grained, server-enforced permissions.</span></div>
     <div class="feature"><b>White-label</b><span>Your app name, logo, colors and company name.</span></div>
@@ -409,8 +409,21 @@ class ZKController extends Controller
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="dashboard">
   <h2>Dashboard</h2>
-  <figure><img src="images/dashboard.png" alt="Dashboard"><figcaption>The dashboard updates live as devices connect and employees punch.</figcaption></figure>
-  <p>At a glance: number of devices and how many are connected, attendance records collected, the last sync time, connected devices, the latest punches and the sync history. <b>Sync Now</b> (top right) fetches from TCP/IP devices and pushes all new records to your ERP immediately. The status lights at the bottom left show whether the ERP API and the ADMS server are reachable.</p>
+  <figure><img src="images/dashboard.png" alt="Dashboard"><figcaption>The dashboard updates live as employees punch.</figcaption></figure>
+  <p>The dashboard is an attendance overview that refreshes by itself as punches arrive:</p>
+  <table>
+    <tr><th>Part</th><th>What it shows</th></tr>
+    <tr><td><b>Present today</b></td><td>Employees with at least one punch today, out of all employees in the bridge.</td></tr>
+    <tr><td><b>Late today</b></td><td>Employees whose <i>first</i> punch today is after the start time plus grace period (see <a href="#attendance-rules">Attendance rules</a>).</td></tr>
+    <tr><td><b>Absent today</b></td><td>Employees in the bridge's employee list with no punch today.</td></tr>
+    <tr><td><b>Waiting for ERP</b></td><td>Records not yet delivered to your ERP.</td></tr>
+    <tr><td><b>Last 7 days</b></td><td>Employees present each day, split into on time and late. Hover a column for the numbers.</td></tr>
+    <tr><td><b>Late arrivals today</b></td><td>Who was late, when they arrived and by how many minutes.</td></tr>
+    <tr><td><b>Arrivals by hour</b></td><td>When employees arrived today (first punch).</td></tr>
+    <tr><td><b>Verification method</b></td><td>Fingerprint, face, card and password punches over the last 7 days.</td></tr>
+    <tr><td><b>Punches by device</b></td><td>Today's punches per device — a quiet device may be offline.</td></tr>
+  </table>
+  <p>Below the analytics are the connected devices, the latest punches and the sync history. <b>Sync Now</b> (top right) fetches from TCP/IP devices and pushes all new records to your ERP immediately. Charts are drawn by the app itself, so the dashboard also works without internet access.</p>
 </section>
 
 <section id="employees">
@@ -456,6 +469,9 @@ class ZKController extends Controller
     <tr><td><code>0 6,18 * * *</code></td><td>Every day at 06:00 and 18:00</td></tr>
   </table>
   <p>Times use the clock of the computer running ZK Bridge. Changes apply immediately without a restart.</p>
+
+  <h3 id="attendance-rules">Attendance rules</h3>
+  <p>In <b>Settings → Attendance Rules</b>, set when work starts and a grace period. An employee counts as <b>late</b> when their first punch of the day is after <i>start time + grace</i> — for example 09:00 + 15 minutes means 09:16 or later is late. The dashboard uses these rules; your ERP receives every punch unchanged.</p>
 </section>
 
 <section id="users">
@@ -491,7 +507,7 @@ class ZKController extends Controller
 <section id="logs">
   <h2>Logs</h2>
   <figure><img src="images/logs.png" alt="Logs page"><figcaption>Server log and sync history.</figcaption></figure>
-  <p>The <b>Logs</b> page shows the latest server messages — device connections, every ADMS request, sync results and errors. It is the first place to look when a device does not appear or a sync fails. Log files are kept in the <code>logs/</code> folder and rotated automatically (5 × 5 MB).</p>
+  <p>The <b>Logs</b> page shows the latest server messages — device connections, every ADMS request, sync results and errors. It is the first place to look when a device does not appear or a sync fails. Log files are kept in the <code>logs/</code> folder and rotated automatically (5 × 5 MB). <b>Clear Logs</b> empties the log and sync history only; attendance records are not affected.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -515,6 +531,9 @@ class ZKController extends Controller
     <tr><td><code>SYNC_ATTENDANCE_URL</code></td><td>—</td><td>Full URL overriding <code>/zk/attendance</code>.</td></tr>
     <tr><td><code>SYNC_SCHEDULE</code></td><td><code>*/30 * * * *</code></td><td>Employee sync schedule (cron).</td></tr>
     <tr><td><code>ATTENDANCE_FETCH_SCHEDULE</code></td><td><code>*/15 * * * *</code></td><td>Attendance push schedule (cron).</td></tr>
+    <tr><td><code>WORK_START_TIME</code></td><td><code>09:00</code></td><td>Start of the working day (Settings → Attendance Rules).</td></tr>
+    <tr><td><code>LATE_GRACE_MINUTES</code></td><td><code>15</code></td><td>Minutes after the start time before a first punch counts as late.</td></tr>
+    <tr><td><code>ATTENDANCE_RETENTION_DAYS</code></td><td><code>90</code></td><td>Days of attendance kept by the bridge. Records not yet sent to the ERP are always kept.</td></tr>
     <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td><code>error</code>, <code>warn</code>, <code>info</code> or <code>debug</code>.</td></tr>
     <tr><td><code>SESSION_SECRET</code></td><td>random</td><td>Signs login sessions. Created automatically; keep it private.</td></tr>
     <tr><td><code>MASTER_USERNAME</code> / <code>MASTER_PASSWORD</code></td><td>empty</td><td>Optional emergency login — see <a href="#forgot-password">Forgot password</a>. Leave empty in normal use.</td></tr>
@@ -529,6 +548,7 @@ class ZKController extends Controller
     <tr><td><code>.env</code></td><td>Ports, ERP connection, schedules, session secret.</td></tr>
     <tr><td><code>data/users.json</code>, <code>data/roles.json</code></td><td>User accounts (hashed passwords) and roles.</td></tr>
     <tr><td><code>data/employees.json</code></td><td>The bridge's employee list.</td></tr>
+    <tr><td><code>data/attendance.json</code></td><td>Attendance records (kept across restarts; older than the retention period and already sent to the ERP are removed).</td></tr>
     <tr><td><code>data/config.json</code>, <code>data/permissions.json</code></td><td>Schedule switches and interface permissions.</td></tr>
     <tr><td><code>data/branding.json</code>, <code>data/branding/</code></td><td>Branding settings and uploaded logo.</td></tr>
     <tr><td><code>data/installed.json</code></td><td>Marks setup as completed.</td></tr>
@@ -599,6 +619,7 @@ class ZKController extends Controller
     <li>ADMS push server and TCP/IP device connector</li>
     <li>Employee sync from ERP to devices and attendance push to ERP, on demand or on a schedule</li>
     <li>Browser-based setup wizard</li>
+    <li>Attendance analytics dashboard; attendance kept across restarts</li>
     <li>Users, custom roles and server-enforced permissions</li>
     <li>White-label branding</li>
     <li>Windows service and systemd installers</li>

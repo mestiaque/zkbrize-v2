@@ -13,6 +13,7 @@ const { requirePerm, requireSuperAdmin, requireOwner, getEffectivePermissions } 
 const { restartProcess } = require('./restart');
 const { setEnvValues } = require('./envfile');
 const branding = require('./branding');
+const { buildAnalytics } = require('./analytics');
 const fs = require('fs');
 const path = require('path');
 
@@ -35,6 +36,11 @@ router.post('/permissions', requireOwner, (req, res) => {
   if (!perms || typeof perms !== 'object') return res.status(400).json({ success: false, error: 'Invalid permissions' });
   savePermissions(perms);
   res.json({ success: true });
+});
+
+// ── Dashboard analytics ──────────────────────────────────────────
+router.get('/analytics', requirePerm('nav.dashboard'), (req, res) => {
+  res.json(buildAnalytics(req.query.days));
 });
 
 // ── State ──────────────────────────────────────────────────────────
@@ -66,6 +72,8 @@ router.get('/config', (req, res) => {
     attendanceFetchSchedule: store.config.attendanceFetchSchedule,
     employeeSyncEnabled: store.config.employeeSyncEnabled !== false,
     attendanceSyncEnabled: store.config.attendanceSyncEnabled !== false,
+    workStartTime: store.config.workStartTime,
+    lateGraceMinutes: store.config.lateGraceMinutes,
     hasToken: !!store.config.laravelApiToken,
     serverIp,
     schedulerStatus: getSchedulerStatus(),
@@ -96,6 +104,13 @@ router.post('/config', requirePerm('nav.settings'), (req, res) => {
       return res.status(400).json({ success: false, error: `${k} is not a valid cron expression` });
     }
   }
+  if (body.workStartTime !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(body.workStartTime))) {
+    return res.status(400).json({ success: false, error: 'Work start time must be HH:MM (24-hour)' });
+  }
+  if (body.lateGraceMinutes !== undefined) {
+    const g = Number(body.lateGraceMinutes);
+    if (!Number.isInteger(g) || g < 0 || g > 240) return res.status(400).json({ success: false, error: 'Grace minutes must be 0-240' });
+  }
   if (body.admsPort !== undefined) {
     const p = parseInt(body.admsPort);
     if (!(p >= 1024 && p <= 65535)) return res.status(400).json({ success: false, error: 'ADMS port must be 1024-65535' });
@@ -112,6 +127,8 @@ router.post('/config', requirePerm('nav.settings'), (req, res) => {
   if (attendanceFetchSchedule !== undefined) store.config.attendanceFetchSchedule = attendanceFetchSchedule;
   if (employeeSyncEnabled !== undefined) store.config.employeeSyncEnabled = Boolean(employeeSyncEnabled);
   if (attendanceSyncEnabled !== undefined) store.config.attendanceSyncEnabled = Boolean(attendanceSyncEnabled);
+  if (body.workStartTime !== undefined) store.config.workStartTime = body.workStartTime;
+  if (body.lateGraceMinutes !== undefined) store.config.lateGraceMinutes = Number(body.lateGraceMinutes);
   if (admsPort !== undefined) {
     const newPort = parseInt(admsPort);
     if (newPort && newPort !== store.config.admsPort) {
@@ -136,6 +153,8 @@ router.post('/config', requirePerm('nav.settings'), (req, res) => {
       EMPLOYEE_SYNC_ENABLED: employeeSyncEnabled !== undefined ? String(store.config.employeeSyncEnabled) : undefined,
       ATTENDANCE_SYNC_ENABLED: attendanceSyncEnabled !== undefined ? String(store.config.attendanceSyncEnabled) : undefined,
       ADMS_PORT: admsPort !== undefined ? store.config.admsPort : undefined,
+      WORK_START_TIME: body.workStartTime !== undefined ? store.config.workStartTime : undefined,
+      LATE_GRACE_MINUTES: body.lateGraceMinutes !== undefined ? store.config.lateGraceMinutes : undefined,
     });
   } catch (e) {
     logger.warn('Could not persist config to .env: ' + e.message);

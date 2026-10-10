@@ -8,7 +8,7 @@ const MemoryStore = require('memorystore')(session);
 const path = require('path');
 const fs = require('fs');
 const logger = require('./logger');
-const { store, loadConfigFile } = require('./store');
+const { store, loadConfigFile, saveAttendanceFile, pruneAttendance } = require('./store');
 const { ensureDataFiles } = require('./datafiles');
 const routes = require('./routes');
 const authRoutes = require('./authRoutes');
@@ -39,8 +39,13 @@ if (env.SYNC_SCHEDULE) store.config.syncSchedule = env.SYNC_SCHEDULE;
 if (env.ATTENDANCE_FETCH_SCHEDULE) store.config.attendanceFetchSchedule = env.ATTENDANCE_FETCH_SCHEDULE;
 if (env.EMPLOYEE_SYNC_ENABLED) store.config.employeeSyncEnabled = env.EMPLOYEE_SYNC_ENABLED !== 'false';
 if (env.ATTENDANCE_SYNC_ENABLED) store.config.attendanceSyncEnabled = env.ATTENDANCE_SYNC_ENABLED !== 'false';
+if (env.WORK_START_TIME) store.config.workStartTime = env.WORK_START_TIME;
+if (env.LATE_GRACE_MINUTES) store.config.lateGraceMinutes = parseInt(env.LATE_GRACE_MINUTES) || 0;
+if (parseInt(env.ATTENDANCE_RETENTION_DAYS)) store.config.attendanceRetentionDays = parseInt(env.ATTENDANCE_RETENTION_DAYS);
 ensureDataFiles();
 ensureOwner();
+pruneAttendance();
+setInterval(pruneAttendance, 6 * 60 * 60 * 1000).unref();
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -166,6 +171,7 @@ server.listen(PORT, HOST, () => {
 onShutdown(() => {
   try { if (fs.readFileSync(PID_FILE, 'utf8').trim() === String(process.pid)) fs.unlinkSync(PID_FILE); } catch {}
 });
+onShutdown(() => saveAttendanceFile());
 onShutdown(() => stopADMSServer());
 onShutdown(() => new Promise(resolve => {
   io.close();

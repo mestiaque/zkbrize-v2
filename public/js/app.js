@@ -32,6 +32,7 @@ socket.on('attendance', (record) => {
   renderDashboardActivity();
   updateNavBadge('nav-attendance-count', attendanceAll.length);
   showLiveAttendancePulse(record);
+  scheduleAnalyticsRefresh();
 });
 
 socket.on('device_connected', ({ deviceId, type }) => {
@@ -72,13 +73,103 @@ function renderAll() {
 
 // ── Stats ─────────────────────────────────────────────────────────
 function renderStats() {
-  const s = state.stats || {};
   const devices = state.devices || [];
-  setText('stat-total-devices', devices.length);
-  setText('stat-connected', devices.filter(d => d.status === 'connected').length);
-  setText('stat-attendance', s.totalAttendance || 0);
-  setText('stat-last-sync', s.lastSync ? timeAgo(s.lastSync) : 'Never');
+  const connected = devices.filter(d => d.status === 'connected').length;
+  setText('dash-device-count', devices.length ? `${connected} of ${devices.length} connected` : '');
 }
+
+// ── Dashboard analytics ───────────────────────────────────────────
+let analyticsTimer = null;
+function scheduleAnalyticsRefresh() {
+  clearTimeout(analyticsTimer);
+  analyticsTimer = setTimeout(loadAnalytics, 1500);
+}
+
+async function loadAnalytics() {
+  if (!document.getElementById('page-dashboard')?.classList.contains('active')) return;
+  const data = await api('/analytics?days=7', null, 'GET');
+  if (data && data.summary) renderAnalytics(data);
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function shortDay(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${WEEKDAYS[new Date(y, m - 1, d).getDay()]} ${d}`;
+}
+
+function renderAnalytics(a) {
+  const s = a.summary;
+  const pct = (n, of) => (of ? Math.round((n / of) * 100) + '%' : '');
+  setText('stat-present', s.present.toLocaleString());
+  setText('stat-present-sub', s.totalEmployees ? `of ${s.totalEmployees.toLocaleString()} employees · ${pct(s.present, s.totalEmployees)}` : `${s.punchesToday.toLocaleString()} punches today`);
+  setText('stat-late', s.late.toLocaleString());
+  setText('stat-late-sub', s.present ? `${pct(s.late, s.present)} of those present` : 'No arrivals yet');
+  setText('stat-absent', s.absent === null ? '—' : s.absent.toLocaleString());
+  setText('stat-absent-sub', s.absent === null ? 'Add employees to track' : 'Employees with no punch today');
+  setText('stat-pending', s.pendingPush.toLocaleString());
+  setText('stat-pending-sub', s.pendingPush ? 'Records not yet sent' : 'Everything is sent');
+
+  const rule = `Start ${a.rules.workStartTime}` + (a.rules.lateGraceMinutes ? ` + ${a.rules.lateGraceMinutes} min grace` : '');
+  setText('late-rule', rule + ' · change in Settings');
+
+  renderColumnChart(document.getElementById('chart-daily'), {
+    labels: a.daily.map(d => shortDay(d.date)),
+    series: [
+      { name: 'On time', color: 'var(--viz-1)', values: a.daily.map(d => d.onTime) },
+      { name: 'Late', color: 'var(--viz-2)', values: a.daily.map(d => d.late) },
+    ],
+    tooltipTitle: i => `${shortDay(a.daily[i].date)} · ${a.daily[i].date}`,
+    ariaLabel: 'Employees present on time and late, last 7 days',
+  });
+
+  // Hours shown: at least 06:00–18:00, widened to any hour that has arrivals
+  const used = a.hourly.map((v, h) => (v ? h : null)).filter(h => h !== null);
+  const from = Math.min(6, ...used), to = Math.max(18, ...used);
+  const hours = [];
+  for (let h = from; h <= to; h++) hours.push(h);
+  renderColumnChart(document.getElementById('chart-hourly'), {
+    labels: hours.map(h => String(h).padStart(2, '0')),
+    series: [{ name: 'employees arrived', color: 'var(--viz-1)', values: hours.map(h => a.hourly[h]) }],
+    tooltipTitle: i => `${String(hours[i]).padStart(2, '0')}:00 – ${String(hours[i]).padStart(2, '0')}:59`,
+    ariaLabel: 'Employees arriving by hour today',
+  });
+
+  renderBarList(document.getElementById('chart-methods'), a.methods, 'var(--viz-1)', 'No punches in the last 7 days');
+  renderBarList(document.getElementById('chart-devices'), a.devices, 'var(--viz-1)', 'No punches today');
+
+  const list = document.getElementById('late-list');
+  list.replaceChildren();
+  if (!a.lateToday.length) {
+    const e = document.createElement('div');
+    e.className = 'empty-state';
+    e.textContent = s.present ? 'Nobody is late today' : 'No arrivals yet today';
+    list.appendChild(e);
+  }
+  for (const l of a.lateToday) {
+    const row = document.createElement('div');
+    row.className = 'viz-late-row';
+    const who = document.createElement('div');
+    const n = document.createElement('div');
+    n.className = 'viz-late-name';
+    n.textContent = l.name || `Employee ${l.employeeId}`;
+    const id = document.createElement('div');
+    id.className = 'viz-late-id';
+    id.textContent = `ID ${l.employeeId}`;
+    who.append(n, id);
+    const when = document.createElement('div');
+    when.className = 'viz-late-time';
+    when.textContent = l.time;
+    const mins = document.createElement('div');
+    mins.className = 'viz-late-mins';
+    mins.textContent = `${l.minutesLate} min late`;
+    when.appendChild(mins);
+    row.append(who, when);
+    list.appendChild(row);
+  }
+}
+
+window.addEventListener('resize', () => { clearTimeout(window._vizResize); window._vizResize = setTimeout(loadAnalytics, 250); });
+setInterval(loadAnalytics, 60000);
 
 // ── Dashboard ─────────────────────────────────────────────────────
 function renderDashboardDevices() {
@@ -707,6 +798,9 @@ async function loadSettings() {
     document.querySelectorAll('.guide-port').forEach(el => { el.textContent = port; });
     setVal('set-adms-port', port);
 
+    setVal('set-work-start', res.workStartTime || '09:00');
+    setVal('set-late-grace', res.lateGraceMinutes ?? 15);
+
     // Sync toggles
     const empEnabled = res.employeeSyncEnabled !== false;
     const attEnabled = res.attendanceSyncEnabled !== false;
@@ -761,6 +855,16 @@ async function restartServer() {
     toast('Restart signal sent', 'info');
     setTimeout(() => { window.location.reload(); }, 3000);
   }
+}
+
+async function saveAttendanceRules() {
+  const workStartTime = val('set-work-start');
+  const lateGraceMinutes = parseInt(val('set-late-grace'), 10);
+  if (!/^\d{2}:\d{2}$/.test(workStartTime)) { toast('Enter a start time', 'error'); return; }
+  if (!(lateGraceMinutes >= 0 && lateGraceMinutes <= 240)) { toast('Grace period must be 0–240 minutes', 'error'); return; }
+  const res = await api('/config', { workStartTime, lateGraceMinutes });
+  if (res?.success) toast('Attendance rules saved', 'success');
+  else toast(res?.error || 'Failed to save rules', 'error');
 }
 
 async function saveAdmsPort() {
@@ -927,6 +1031,7 @@ function showPage(name, el) {
   try { localStorage.setItem('activePage', name); } catch {}
   if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
 
+  if (name === 'dashboard') loadAnalytics();
   if (name === 'logs') loadLogs();
   if (name === 'settings') loadSettings();
   if (name === 'employees') loadBridgeEmployees();

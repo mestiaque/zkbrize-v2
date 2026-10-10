@@ -20,12 +20,15 @@ function ensureDataFiles() {
     'roles.json':       DEFAULT_ROLES,
     'permissions.json': DEFAULT_PERMISSIONS,
     'employees.json':   {},
+    'attendance.json':  [],
     'branding.json':    BRANDING_DEFAULTS,
     'config.json': {
       syncSchedule: store.config.syncSchedule,
       attendanceFetchSchedule: store.config.attendanceFetchSchedule,
       employeeSyncEnabled: store.config.employeeSyncEnabled !== false,
       attendanceSyncEnabled: store.config.attendanceSyncEnabled !== false,
+      workStartTime: store.config.workStartTime,
+      lateGraceMinutes: store.config.lateGraceMinutes,
     },
   };
 

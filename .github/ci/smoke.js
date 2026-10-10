@@ -108,6 +108,9 @@ async function full() {
   const brand = await req('GET', '/api/branding');
   ok(brand.data?.appName === 'CI Bridge', 'branding saved');
 
+  const analytics = await req('GET', '/api/analytics?days=7');
+  ok(analytics.data?.daily?.length === 7 && typeof analytics.data?.summary?.present === 'number', 'dashboard analytics');
+
   const ping = await req('GET', '/api/devices/ping?ip=127.0.0.1');
   ok(ping.data?.reachable === true, `ping 127.0.0.1 (${process.platform})`);
 

@@ -4,6 +4,7 @@ const path = require('path');
 const EMP_FILE    = path.join(__dirname, '../data/employees.json');
 const PERM_FILE   = path.join(__dirname, '../data/permissions.json');
 const CONFIG_FILE = path.join(__dirname, '../data/config.json');
+const ATT_FILE    = path.join(__dirname, '../data/attendance.json');
 
 const DEFAULT_PERMISSIONS = {
   nav: {
@@ -58,6 +59,8 @@ function saveConfigFile() {
       attendanceFetchSchedule: store.config.attendanceFetchSchedule,
       employeeSyncEnabled: store.config.employeeSyncEnabled,
       attendanceSyncEnabled: store.config.attendanceSyncEnabled,
+      workStartTime: store.config.workStartTime,
+      lateGraceMinutes: store.config.lateGraceMinutes,
     };
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(toSave, null, 2));
   } catch (e) { console.error('Failed to save config.json:', e.message); }
@@ -80,10 +83,42 @@ function saveEmployeeFile(employees) {
   }
 }
 
+// ── Attendance persistence ─────────────────────────────────────────
+// Records live in memory for speed and are written to data/attendance.json a
+// moment after each change (atomic write), so a restart never loses punches.
+
+function loadAttendanceFile() {
+  try {
+    if (fs.existsSync(ATT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ATT_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) { console.error('Failed to load attendance.json:', e.message); }
+  return [];
+}
+
+let attSaveTimer = null;
+function scheduleAttendanceSave() {
+  if (attSaveTimer) return;
+  attSaveTimer = setTimeout(() => { attSaveTimer = null; saveAttendanceFile(); }, 1500);
+}
+
+function saveAttendanceFile() {
+  if (attSaveTimer) { clearTimeout(attSaveTimer); attSaveTimer = null; }
+  try {
+    fs.mkdirSync(path.dirname(ATT_FILE), { recursive: true });
+    const tmp = ATT_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(store.attendanceLogs));
+    fs.renameSync(tmp, ATT_FILE);
+  } catch (e) { console.error('Failed to save attendance.json:', e.message); }
+}
+
+function attKey(r) { return `${r.employeeId}|${r.time}|${r.deviceId}`; }
+
 // In-memory state store
 const store = {
   devices: {},       // deviceId -> device info + status
-  attendanceLogs: [], // recent attendance records
+  attendanceLogs: loadAttendanceFile(), // newest first, persisted
   syncLog: [],       // sync history
   employees: loadEmployeeFile(), // uid -> employee (persisted)
   permissions: loadPermissionsFile(), // ui permissions (persisted)
@@ -102,11 +137,15 @@ const store = {
     admsPort: 5015,
     syncSchedule: '*/30 * * * *',
     attendanceFetchSchedule: '*/15 * * * *',
+    workStartTime: '09:00',      // used to count late arrivals
+    lateGraceMinutes: 15,
+    attendanceRetentionDays: 90,
   }
 };
 
-// Max recent logs to keep in memory
-const MAX_LOGS = 10000;
+const attendanceKeys = new Set(store.attendanceLogs.map(attKey));
+store.stats.totalAttendance = store.attendanceLogs.length;
+
 const MAX_SYNC_LOG = 100;
 
 function addDevice(device) {
@@ -141,12 +180,9 @@ function removeDevice(deviceId) {
 }
 
 function addAttendanceLog(record) {
-  const isDup = store.attendanceLogs.some(r =>
-    r.employeeId === record.employeeId &&
-    r.time === record.time &&
-    r.deviceId === record.deviceId
-  );
-  if (isDup) return false;
+  const key = attKey(record);
+  if (attendanceKeys.has(key)) return false;
+  attendanceKeys.add(key);
   store.attendanceLogs.unshift({
     ...record,
     receivedAt: new Date().toISOString(),
@@ -154,14 +190,30 @@ function addAttendanceLog(record) {
     pushedToERP: false,
     pushedAt: null,
   });
-  if (store.attendanceLogs.length > MAX_LOGS) {
-    store.attendanceLogs = store.attendanceLogs.slice(0, MAX_LOGS);
-  }
-  store.stats.totalAttendance++;
+  store.stats.totalAttendance = store.attendanceLogs.length;
   if (store.devices[record.deviceId]) {
     store.devices[record.deviceId].attendancePushed =
       (store.devices[record.deviceId].attendancePushed || 0) + 1;
   }
+  scheduleAttendanceSave();
+  return true;
+}
+
+// Drops records older than the retention period — but never ones not yet sent to the ERP
+function pruneAttendance() {
+  const days = parseInt(store.config.attendanceRetentionDays) || 90;
+  const cutoff = new Date(Date.now() - days * 86400000);
+  const pad = n => String(n).padStart(2, '0');
+  const cutoffStr = `${cutoff.getFullYear()}-${pad(cutoff.getMonth() + 1)}-${pad(cutoff.getDate())}`;
+  const before = store.attendanceLogs.length;
+  store.attendanceLogs = store.attendanceLogs.filter(r => !r.pushedToERP || String(r.time).slice(0, 10) >= cutoffStr);
+  if (store.attendanceLogs.length !== before) {
+    attendanceKeys.clear();
+    store.attendanceLogs.forEach(r => attendanceKeys.add(attKey(r)));
+    store.stats.totalAttendance = store.attendanceLogs.length;
+    saveAttendanceFile();
+  }
+  return before - store.attendanceLogs.length;
 }
 
 function addSyncLog(entry) {
@@ -218,6 +270,7 @@ function markAttendancePushed(ids) {
       r.pushedAt = now;
     }
   });
+  scheduleAttendanceSave();
 }
 
 function savePermissions(perms) {
@@ -225,10 +278,9 @@ function savePermissions(perms) {
   savePermissionsFile(perms);
 }
 
+// Clears the sync history only — attendance records are data, not logs
 function clearLogs() {
-  store.attendanceLogs = [];
   store.syncLog = [];
-  store.stats.totalAttendance = 0;
   store.stats.lastSync = null;
 }
 
@@ -274,4 +326,6 @@ module.exports = {
   DEFAULT_PERMISSIONS,
   loadConfigFile,
   saveConfigFile,
+  saveAttendanceFile,
+  pruneAttendance,
 };
