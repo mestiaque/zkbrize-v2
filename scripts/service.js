@@ -35,11 +35,19 @@ function isWindowsAdmin() {
   try { execSync('net session', { stdio: 'ignore' }); return true; } catch { return false; }
 }
 
+const WIN_ID = 'zkbridge';                 // service name is "zkbridge.exe"
+const WIN_SERVICE = WIN_ID + '.exe';
+
+// node-windows only builds the WinSW config + exe here. Install/start are run
+// directly (we are already elevated), because node-windows' own "elevate" helper
+// returns before the command has finished.
 function windowsService() {
-  let Service;
-  try { ({ Service } = require('node-windows')); }
-  catch { fail('node-windows is not installed. Run "npm install" first.'); }
-  return new Service({
+  let Service, winsw;
+  try {
+    ({ Service } = require('node-windows'));
+    winsw = require('node-windows/lib/winsw');
+  } catch { fail('node-windows is not installed. Run "npm install" first.'); }
+  const svc = new Service({
     name: NAME,
     description: DESCRIPTION,
     script: SCRIPT,
@@ -47,36 +55,52 @@ function windowsService() {
     maxRestarts: 10,
     env: [{ name: 'ZKB_SERVICE', value: '1' }],
   });
+  return { svc, winsw, dir: svc.directory() };
+}
+
+function winServiceState() {
+  try { return execSync(`sc query "${WIN_SERVICE}"`, { encoding: 'utf8' }); } catch { return null; }
+}
+
+function run(cmd) {
+  try { execSync(cmd, { stdio: 'inherit' }); return true; } catch { return false; }
 }
 
 function windows() {
-  if (action !== 'status' && !isWindowsAdmin()) {
-    fail('Administrator rights are required. Right-click install-service.bat and choose "Run as administrator".');
-  }
-  const svc = windowsService();
-
   if (action === 'status') {
-    console.log(svc.exists ? `[service] "${NAME}" is installed.` : `[service] "${NAME}" is not installed.`);
+    const state = winServiceState();
+    console.log(state ? state : `[service] "${NAME}" is not installed.`);
     return;
   }
+  if (!isWindowsAdmin()) {
+    fail('Administrator rights are required. Right-click install-service.bat and choose "Run as administrator".');
+  }
+  const { svc, winsw, dir } = windowsService();
+  const exe = path.join(dir, WIN_SERVICE);
 
   if (action === 'install') {
-    svc.on('install', () => {
-      svc.start();
-      console.log(`[service] Installed and started "${NAME}". It will start automatically with Windows.`);
-      console.log(`[service] Open http://localhost:${readPort()}`);
-    });
-    svc.on('alreadyinstalled', () => {
-      console.log(`[service] "${NAME}" is already installed. Starting it...`);
-      svc.start();
-    });
-    svc.on('error', e => fail(String(e)));
-    svc.install();
+    if (!winServiceState()) {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, WIN_ID + '.xml'), svc._xml);
+      winsw.createExe(WIN_ID, dir);
+      if (!run(`"${exe}" install`)) fail('Could not register the Windows service.');
+    } else {
+      console.log(`[service] "${NAME}" is already installed.`);
+    }
+    if (!/RUNNING/.test(winServiceState() || '') && !run(`net start "${WIN_SERVICE}"`)) {
+      fail(`The service was installed but did not start. See the logs in ${dir}`);
+    }
+    console.log(`[service] "${NAME}" is running and will start automatically with Windows.`);
+    console.log(`[service] Open http://localhost:${readPort()}`);
   } else {
-    svc.on('uninstall', () => console.log(`[service] Removed "${NAME}".`));
-    svc.on('alreadyuninstalled', () => console.log(`[service] "${NAME}" is not installed.`));
-    svc.on('error', e => fail(String(e)));
-    svc.uninstall();
+    if (!winServiceState()) { console.log(`[service] "${NAME}" is not installed.`); return; }
+    if (/RUNNING/.test(winServiceState() || '')) run(`net stop "${WIN_SERVICE}"`);
+    if (fs.existsSync(exe)) run(`"${exe}" uninstall`);
+    else run(`sc delete "${WIN_SERVICE}"`);
+    for (const f of [WIN_SERVICE, WIN_SERVICE + '.config', WIN_ID + '.xml']) {
+      try { fs.unlinkSync(path.join(dir, f)); } catch {}
+    }
+    console.log(`[service] Removed "${NAME}".`);
   }
 }
 

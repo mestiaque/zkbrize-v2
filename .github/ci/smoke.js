@@ -18,7 +18,10 @@ let failures = 0;
 
 function ok(cond, msg) {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${msg}`);
-  if (!cond) failures++;
+  if (!cond) {
+    failures++;
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=smoke (${mode})::${msg}`);
+  }
 }
 
 async function req(method, url, body) {

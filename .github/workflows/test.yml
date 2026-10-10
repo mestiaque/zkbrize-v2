@@ -17,9 +17,9 @@ jobs:
         node: [20, 22]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
 
@@ -58,7 +58,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          node scripts/service.js install
+          node scripts/service.js install 2>&1 | Tee-Object -FilePath logs/service-install.log
           for ($i = 0; $i -lt 30; $i++) { if ((sc.exe query zkbridge.exe) -match 'RUNNING') { break }; Start-Sleep 1 }
           sc.exe query zkbridge.exe
           if (-not ((sc.exe query zkbridge.exe) -match 'RUNNING')) { throw 'service is not running' }
@@ -103,9 +103,25 @@ jobs:
           sudo "$(command -v node)" scripts/service.js uninstall
           ! systemctl is-active zk-bridge
 
+      # Logs as annotations, so failures are readable without downloading job logs
       - name: Server logs
-        if: always()
+        if: failure()
         shell: bash
         run: |
-          for f in logs/*.log; do echo "===== $f"; tail -n 60 "$f"; done || true
-          ls src/daemon 2>/dev/null && tail -n 60 src/daemon/*.log 2>/dev/null || true
+          annotate() {
+            local title="$1" file="$2"
+            [ -f "$file" ] || return 0
+            local body
+            body=$(tail -n 40 "$file" | sed 's/%/%25/g' | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=$title::$body"
+          }
+          for f in logs/*.log src/daemon/*.log src/daemon/*.err.log src/daemon/*.out.log; do annotate "$(basename "$f")" "$f"; done
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo journalctl -u zk-bridge --no-pager -n 40 > /tmp/journal.log 2>&1 || true
+            annotate journal /tmp/journal.log
+          else
+            sc.exe query zkbridge.exe > /tmp/sc.log 2>&1 || true
+            annotate "sc query" /tmp/sc.log
+            ls -la src/daemon > /tmp/daemon.log 2>&1 || true
+            annotate "src/daemon" /tmp/daemon.log
+          fi
