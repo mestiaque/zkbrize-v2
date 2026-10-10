@@ -19,7 +19,7 @@ Requires **Node.js 20+**. Same commands on Linux and Windows:
 ```bash
 git clone <repo-url>
 cd zkbrize-v1
-npm install     # also creates .env, logs/ and data/ on first run
+npm install     # also creates .env (from .env.example), data/ and logs/
 npm start       # open http://localhost:3000
 ```
 
@@ -133,8 +133,7 @@ zk-bridge/
 ├── scripts/
 │   ├── setup.js           # Runs after npm install
 │   └── service.js         # Windows service / systemd install
-├── config/
-│   └── default.env
+├── .env.example           # Settings template (copied to .env by npm install)
 ├── data/                  # Auto-created: users, settings, branding
 ├── logs/                  # Auto-created
 └── README.md

@@ -282,7 +282,7 @@ module.exports = {
   requireAuth, requireAdmin, requireSuperAdmin, requirePerm,
   verifyLogin, hasAnyLogin, getEffectivePermissions,
   loginLockedFor, recordLoginFailure, clearLoginFailures,
-  findUserById, roleExists,
+  findUserById, roleExists, DEFAULT_ROLES,
   createUser, updateUser, deleteUser, listUsers, loadUsers,
   createRole, updateRole, deleteRole, loadRoles,
   MASTER_USERNAME,

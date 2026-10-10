@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('./logger');
 const { store, loadConfigFile } = require('./store');
+const { ensureDataFiles } = require('./datafiles');
 const routes = require('./routes');
 const authRoutes = require('./authRoutes');
 const { requireAuth, requireSuperAdmin } = require('./auth');
@@ -20,17 +21,25 @@ const { startADMSServer, stopADMSServer, setSocketIO: admsSetIO } = require('./a
 const { setSocketIO: tcpSetIO } = require('./tcpip/connector');
 const { startScheduler, setSocketIO: schedSetIO } = require('./scheduler');
 
-// Load config from env
-store.config.laravelApiUrl = process.env.LARAVEL_API_URL || '';
-store.config.laravelApiToken = process.env.LARAVEL_API_TOKEN || '';
-store.config.fetchEmployeeUrl = process.env.FETCH_EMPLOYEE_URL || '';
-store.config.syncAttendanceUrl = process.env.SYNC_ATTENDANCE_URL || '';
-store.config.admsPort = parseInt(process.env.ADMS_PORT) || 5015;
-store.config.syncSchedule = process.env.SYNC_SCHEDULE || '*/30 * * * *';
-store.config.attendanceFetchSchedule = process.env.ATTENDANCE_FETCH_SCHEDULE || '*/15 * * * *';
-store.config.employeeSyncEnabled     = process.env.EMPLOYEE_SYNC_ENABLED !== 'false';
-store.config.attendanceSyncEnabled   = process.env.ATTENDANCE_SYNC_ENABLED !== 'false';
+// Settings: data/config.json first, then .env on top (.env is the source of truth;
+// the Settings page writes both)
+store.config.admsPort = 5015;
+store.config.syncSchedule = '*/30 * * * *';
+store.config.attendanceFetchSchedule = '*/15 * * * *';
+store.config.employeeSyncEnabled = true;
+store.config.attendanceSyncEnabled = true;
 loadConfigFile();
+const env = process.env;
+store.config.laravelApiUrl     = env.LARAVEL_API_URL || '';
+store.config.laravelApiToken   = env.LARAVEL_API_TOKEN || '';
+store.config.fetchEmployeeUrl  = env.FETCH_EMPLOYEE_URL || '';
+store.config.syncAttendanceUrl = env.SYNC_ATTENDANCE_URL || '';
+if (parseInt(env.ADMS_PORT)) store.config.admsPort = parseInt(env.ADMS_PORT);
+if (env.SYNC_SCHEDULE) store.config.syncSchedule = env.SYNC_SCHEDULE;
+if (env.ATTENDANCE_FETCH_SCHEDULE) store.config.attendanceFetchSchedule = env.ATTENDANCE_FETCH_SCHEDULE;
+if (env.EMPLOYEE_SYNC_ENABLED) store.config.employeeSyncEnabled = env.EMPLOYEE_SYNC_ENABLED !== 'false';
+if (env.ATTENDANCE_SYNC_ENABLED) store.config.attendanceSyncEnabled = env.ATTENDANCE_SYNC_ENABLED !== 'false';
+ensureDataFiles();
 
 const PORT = parseInt(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';

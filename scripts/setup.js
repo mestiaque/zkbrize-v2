@@ -6,11 +6,8 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const ENV_FILE = path.join(ROOT, '.env');
-const ENV_TEMPLATE = path.join(ROOT, 'config', 'default.env');
+const ENV_TEMPLATE = path.join(ROOT, '.env.example');
 
-for (const dir of ['logs', 'data']) {
-  fs.mkdirSync(path.join(ROOT, dir), { recursive: true });
-}
 
 let env = '';
 let created = false;
@@ -32,10 +29,13 @@ if (!hasValue('SESSION_SECRET')) setValue('SESSION_SECRET', crypto.randomBytes(3
 
 fs.writeFileSync(ENV_FILE, env);
 
+// data/ and logs/ folders plus default data files (also done on every server start)
+require('../src/datafiles').ensureDataFiles();
+
 if (created) {
   const port = (env.match(/^PORT=(\d+)/m) || [])[1] || '3000';
   console.log('');
-  console.log('[setup] Created .env from config/default.env');
+  console.log('[setup] Created .env from .env.example');
   console.log(`[setup] Next: run "npm start" and open http://localhost:${port} to finish setup in your browser.`);
   console.log('');
 }
