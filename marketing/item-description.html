@@ -1,0 +1,76 @@
+<!--
+  CodeCanyon item description. Paste into the "Description" field of the item
+  upload form. Envato allows only basic HTML (h2-h4, p, ul/ol/li, strong, em, a, br, img).
+-->
+
+<h2>Connect ZKTeco attendance devices to your ERP — in minutes</h2>
+
+<p><strong>ZK Bridge</strong> collects punches from your ZKTeco fingerprint, face and card devices in real time, sends them to your ERP, HRM or payroll system through a simple REST API, and keeps the employee list on every device in sync. It runs on any Windows or Linux PC in your office, installs with one command and is set up entirely in the browser.</p>
+
+<p>Works with <strong>any ERP in any language</strong> — Laravel, CodeIgniter, Django, ASP.NET, Node.js or your own system. Your ERP only needs three small JSON endpoints; a complete Laravel example is included.</p>
+
+<h3>Highlights</h3>
+<ul>
+  <li><strong>Real-time ADMS push</strong> — newer devices send every punch the moment it happens. No fixed device IP needed.</li>
+  <li><strong>TCP/IP pull</strong> — older devices are read over port 4370, with comm-key login and automatic reconnects.</li>
+  <li><strong>Two-way sync</strong> — employees from your ERP to the devices; attendance from the devices to your ERP.</li>
+  <li><strong>Automatic schedules</strong> — sync employees and push attendance every few minutes, hourly or daily.</li>
+  <li><strong>Attendance analytics dashboard</strong> — present, late and absent today, a 7-day trend, arrivals by hour, verification methods and punches per device. Updates live.</li>
+  <li><strong>Nothing gets lost</strong> — punches are stored safely and re-sent until your ERP confirms them, even across restarts.</li>
+  <li><strong>Browser setup wizard</strong> — no config files to edit. Create the admin account, connect the ERP and you are done.</li>
+  <li><strong>Users, roles &amp; permissions</strong> — custom roles with page- and button-level permissions, enforced on the server.</li>
+  <li><strong>White-label</strong> — your app name, logo, colors and company name.</li>
+  <li><strong>Runs as a service</strong> — one click installs it as a Windows service or a Linux systemd service that starts with the computer.</li>
+  <li><strong>Works offline</strong> — everything runs on your local network; no cloud account, no external CDN.</li>
+</ul>
+
+<h3>Features</h3>
+<h4>Devices</h4>
+<ul>
+  <li>ADMS / Cloud Server push and TCP/IP (port 4370) devices, side by side</li>
+  <li>Device list with live status, model, serial number and firmware</li>
+  <li>Network ping test before connecting</li>
+  <li>Fetch historical attendance from devices, with a date range</li>
+</ul>
+<h4>Employees</h4>
+<ul>
+  <li>Import from ERP, load from a device, add / edit / delete in the browser</li>
+  <li>Changes are written to connected devices; enrolled fingerprints and faces are kept</li>
+  <li>Export to CSV (ZKTeco desktop software) and user.dat (USB import)</li>
+</ul>
+<h4>Attendance</h4>
+<ul>
+  <li>Live attendance table with filters: employee, date, device, check-in/out, method, source, sync status</li>
+  <li>Push to ERP on demand or on a schedule; duplicates are ignored automatically</li>
+  <li>Configurable work start time and grace period for late arrivals</li>
+</ul>
+<h4>Security</h4>
+<ul>
+  <li>Hashed passwords, login rate limiting, server-side permission checks</li>
+  <li>Owner-only administration; emergency recovery login</li>
+  <li>Session-secured live updates</li>
+</ul>
+
+<h3>Requirements</h3>
+<ul>
+  <li>Windows 10 / 11 / Server 2016+ or Linux (Ubuntu, Debian or any systemd distribution)</li>
+  <li>Node.js 20 or newer (free from nodejs.org)</li>
+  <li>ZKTeco devices with ADMS / Cloud Server support or TCP/IP port 4370</li>
+  <li>A PC or server on the same network as the devices (shared hosting is not supported)</li>
+</ul>
+
+<h3>Installation</h3>
+<ol>
+  <li>Install Node.js 20+</li>
+  <li>Unzip the package and run <code>npm install</code> (or double-click <code>start.bat</code> on Windows)</li>
+  <li>Open <code>http://localhost:3000</code> and follow the setup wizard</li>
+</ol>
+<p>Full offline documentation with screenshots is included: installation, device setup, the ERP API reference with a Laravel example, troubleshooting and FAQ.</p>
+
+<h3>Changelog</h3>
+<p><strong>Version 1.0.0</strong> — Initial release</p>
+
+<h3>Support</h3>
+<p>Questions, setup help or bug reports: contact me through my CodeCanyon profile. Please include your OS, Node.js version, device model and the relevant lines from the Logs page.</p>
+
+<p><em>ZKTeco is a trademark of ZKTeco Co., Ltd. This product is independent and is not affiliated with or endorsed by ZKTeco.</em></p>

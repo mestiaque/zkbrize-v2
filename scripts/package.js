@@ -20,5 +20,11 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 if (fs.existsSync(out)) fs.unlinkSync(out);
 
 run(`git archive --format=zip --prefix=${name}/ -o "${out}" HEAD`);
+
+// Screenshots for the CodeCanyon upload form, as their own ZIP
+const shots = path.join(ROOT, 'dist', `${name}-screenshots.zip`);
+if (fs.existsSync(shots)) fs.unlinkSync(shots);
+run(`git archive --format=zip -o "${shots}" HEAD:marketing/screenshots`);
+console.log(`[package] ${path.relative(ROOT, shots)}`);
 const files = run(`git archive --format=tar HEAD | tar -t`).split('\n').filter(f => f && !f.endsWith('/')).length;
 console.log(`[package] ${path.relative(ROOT, out)}  (${files} files, ${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
