@@ -199,7 +199,8 @@ function startADMSServer(port) {
       const method = req.method;
 
       // Log everything so we can see exactly what the device sends
-      logger.info(`ADMS RAW ${method} ${req.url} | headers.sn=${req.headers['sn'] || '-'} | body: ${body.slice(0, 400)}`);
+      // Every request, including heartbeats — visible with LOG_LEVEL=debug
+      logger.debug(`ADMS RAW ${method} ${req.url} | headers.sn=${req.headers['sn'] || '-'} | body: ${body.slice(0, 400)}`);
 
       // ── Initial handshake: GET /iclock/cdata ──────────────────
       if (urlPath === '/iclock/cdata' && method === 'GET') {
@@ -449,7 +450,7 @@ function startADMSServer(port) {
           if (pushed > 0) {
             logger.info(`ADMS ${sn} saved ${pushed} attendance records`);
           } else if (recordLines.length === 0) {
-            logger.info(`ADMS ${sn} POST received but no record lines found — check RAW log above`);
+            logger.info(`ADMS ${sn} POST received but no record lines found — set LOG_LEVEL=debug to see the raw request`);
           }
           emit('state_update', { type: 'attendance', count: pushed });
         }

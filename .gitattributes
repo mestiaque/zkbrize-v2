@@ -4,3 +4,10 @@
 *.sh  text eol=lf
 *.png binary
 *.ico binary
+
+# Left out of the CodeCanyon package (npm run package)
+.github            export-ignore
+SETUP.md           export-ignore
+ZK-Bridge.desktop  export-ignore
+marketing          export-ignore
+scripts/package.js export-ignore

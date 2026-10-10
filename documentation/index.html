@@ -552,6 +552,7 @@ class ZKController extends Controller
     <tr><td><code>data/attendance.json</code></td><td>Attendance records (kept across restarts; older than the retention period and already sent to the ERP are removed).</td></tr>
     <tr><td><code>data/config.json</code>, <code>data/permissions.json</code></td><td>Schedule switches and interface permissions.</td></tr>
     <tr><td><code>data/branding.json</code>, <code>data/branding/</code></td><td>Branding settings and uploaded logo.</td></tr>
+    <tr><td><code>data/sessions.json</code></td><td>Sign-in sessions, so users stay signed in across restarts.</td></tr>
     <tr><td><code>data/installed.json</code></td><td>Marks setup as completed.</td></tr>
     <tr><td><code>logs/</code></td><td>Log files.</td></tr>
   </table>
@@ -641,11 +642,10 @@ class ZKController extends Controller
   <table>
     <tr><th>Package</th><th>License</th><th>Package</th><th>License</th></tr>
     <tr><td>Express</td><td>MIT</td><td>Socket.IO</td><td>MIT</td></tr>
-    <tr><td>express-session</td><td>MIT</td><td>memorystore</td><td>MIT</td></tr>
+    <tr><td>express-session</td><td>MIT</td><td>zkteco-js</td><td>MIT</td></tr>
     <tr><td>axios</td><td>MIT</td><td>bcryptjs</td><td>BSD-3-Clause</td></tr>
     <tr><td>dotenv</td><td>BSD-2-Clause</td><td>node-cron</td><td>ISC</td></tr>
     <tr><td>winston</td><td>MIT</td><td>node-windows (WinSW)</td><td>MIT</td></tr>
-    <tr><td>zkteco-js</td><td>MIT</td><td></td><td></td></tr>
   </table>
   <p>ZKTeco is a trademark of ZKTeco Co., Ltd. ZK Bridge is an independent product and is not affiliated with or endorsed by ZKTeco.</p>
 </section>

@@ -4,7 +4,7 @@ const http = require('http');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
 const session = require('express-session');
-const MemoryStore = require('memorystore')(session);
+const { FileSessionStore } = require('./sessionstore');
 const path = require('path');
 const fs = require('fs');
 const logger = require('./logger');
@@ -61,10 +61,11 @@ const app = express();
 const server = http.createServer(app);
 app.disable('x-powered-by');
 
+const sessionStore = new FileSessionStore();
 const sessionMiddleware = session({
   name: 'zkb.sid',
   secret: SESSION_SECRET,
-  store: new MemoryStore({ checkPeriod: 60 * 60 * 1000 }),
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 },
@@ -182,6 +183,7 @@ onShutdown(() => {
   try { if (fs.readFileSync(PID_FILE, 'utf8').trim() === String(process.pid)) fs.unlinkSync(PID_FILE); } catch {}
 });
 onShutdown(() => saveAttendanceFile());
+onShutdown(() => sessionStore.flush());
 onShutdown(() => disconnectAllTCP());
 onShutdown(() => stopADMSServer());
 onShutdown(() => new Promise(resolve => {

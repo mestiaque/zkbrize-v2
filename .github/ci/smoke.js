@@ -77,6 +77,7 @@ async function restartTest() {
   // The server may come back quickly; give it time to go down first
   await waitDown(5000);
   ok(await waitUp(), 'server is back after restart');
+  ok((await req('GET', '/api/auth/me')).status === 200, 'still signed in after restart');
   ok(await login(), 'login after restart');
   ok(await admsUp(), `ADMS port ${ADMS_PORT} listening after restart`);
 }

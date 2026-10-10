@@ -88,7 +88,7 @@ async function openConnection(entry) {
   if (config.password && zk.connectionType === 'tcp') {
     const reply = await zk.ztcp.executeCmd(CMD.AUTH, makeCommKey(config.password, zk.ztcp.sessionId));
     if (replyCode(reply) !== CMD.ACK_OK) {
-      try { await zk.disconnect(); } catch {}
+      try { await quiet(() => zk.disconnect()); } catch {}
       throw new Error('Device rejected the comm key (password)');
     }
   }
@@ -103,14 +103,14 @@ function withDevice(deviceId, fn) {
   if (!entry) return Promise.reject(new Error('Device not connected'));
   const run = async () => {
     try {
-      const zk = isOpen(entry.zk) ? entry.zk : await openConnection(entry);
-      const result = await fn(zk);
+      const zk = isOpen(entry.zk) ? entry.zk : await quiet(() => openConnection(entry));
+      const result = await quiet(() => fn(zk));
       updateDevice(deviceId, { status: 'connected', error: null });
       return result;
     } catch (err) {
       updateDevice(deviceId, { status: 'error', error: err.message });
       emit('state_update', { type: 'device_update' });
-      try { if (entry.zk) await entry.zk.disconnect(); } catch {}
+      try { if (entry.zk) await quiet(() => entry.zk.disconnect()); } catch {}
       entry.zk = null;
       throw err;
     }
@@ -118,6 +118,16 @@ function withDevice(deviceId, fn) {
   const next = entry.queue.then(run, run);
   entry.queue = next.catch(() => {});
   return next;
+}
+
+// zkteco-js prints progress and errors with console.log/console.error. While it
+// runs, send that output to the logger at debug level instead of the terminal;
+// the bridge logs its own outcome of every operation.
+async function quiet(fn) {
+  const { log, error } = console;
+  console.log = (...a) => logger.debug('[zkteco-js] ' + a.map(String).join(' '));
+  console.error = (...a) => logger.debug('[zkteco-js] ' + a.map(x => x?.message || String(x)).join(' '));
+  try { return await fn(); } finally { console.log = log; console.error = error; }
 }
 
 function errorMessage(err) {
@@ -149,11 +159,11 @@ async function connectTCPDevice(config) {
   tcpDevices[deviceId] = entry;
 
   try {
-    const zk = await openConnection(entry);
+    const zk = await quiet(() => openConnection(entry));
     // Device details (TCP only; one request at a time on the same socket)
     const extra = {};
     if (zk.connectionType === 'tcp') {
-      const ask = async fn => { try { return String(await fn() || '').trim(); } catch { return ''; } };
+      const ask = async fn => { try { return String(await quiet(fn) || '').trim(); } catch { return ''; } };
       const serial = await ask(() => zk.getSerialNumber());
       const model = await ask(() => zk.getDeviceName());
       const firmware = await ask(() => zk.getFirmware());
@@ -327,7 +337,7 @@ async function disconnectTCPDevice(deviceId) {
   const entry = tcpDevices[deviceId];
   if (!entry) return;
   delete tcpDevices[deviceId];
-  try { if (entry.zk) await entry.zk.disconnect(); } catch {}
+  try { if (entry.zk) await quiet(() => entry.zk.disconnect()); } catch {}
   updateDevice(deviceId, { status: 'disconnected' });
   emit('state_update', { type: 'device_update' });
 }
