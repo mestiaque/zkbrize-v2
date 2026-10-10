@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const logger = require('./logger');
 const { store, addSyncLog, upsertEmployee, markAttendancePushed, markEmployeesSynced } = require('./store');
 const { fetchEmployees, pushAttendance } = require('./laravel/api');
-const { syncEmployeesToTCP, tcpDevices } = require('./tcpip/connector');
+const { syncEmployeesToTCP, fetchAllTCP } = require('./tcpip/connector');
 const { requestSetUserOnADMS } = require('./adms/server');
 
 function parseEmpUid(emp) {
@@ -94,6 +94,10 @@ async function runAttendanceFetch() {
     logger.info('Attendance sync skipped: disabled');
     return;
   }
+  // Pull new punches from TCP/IP devices first (ADMS devices push by themselves)
+  const tcp = await fetchAllTCP();
+  if (tcp.results.length) logger.info(`Attendance sync: fetched ${tcp.fetched} new records from ${tcp.results.length} TCP device(s)`);
+
   const pushUrl = store.config.syncAttendanceUrl || store.config.laravelApiUrl;
   if (!pushUrl) {
     logger.warn('Attendance push skipped: no URL configured (set Sync Attendance URL or ERP API Base URL)');

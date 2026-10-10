@@ -81,6 +81,33 @@ async function restartTest() {
   ok(await admsUp(), `ADMS port ${ADMS_PORT} listening after restart`);
 }
 
+// TCP/IP devices, against .github/ci/zk_emulator.py (ports from env)
+async function tcpTest() {
+  const plain = process.env.ZK_EMU_PORT, keyed = process.env.ZK_EMU_KEY_PORT;
+  if (!plain) { console.log('SKIP  TCP tests (ZK_EMU_PORT not set)'); return; }
+  const id = encodeURIComponent(`127.0.0.1:${plain}`);
+  const c = await req('POST', '/api/devices/tcp/connect', { ip: '127.0.0.1', port: Number(plain), name: 'Emulator' });
+  ok(c.data?.success, 'TCP: connect');
+  const f = await req('POST', `/api/devices/${id}/fetch-attendance`, {});
+  ok(f.data?.success && f.data.total === 4, `TCP: fetch attendance (${f.data?.total} on device)`);
+  const recs = (await req('GET', '/api/attendance')).data.records.filter(r => r.source === 'tcp');
+  ok(recs.some(r => r.employeeId === '1001' && /08:52:10$/.test(r.time) && r.status === '0'), 'TCP: record fields decoded');
+  const load = await req('POST', '/api/employees/load-from-device', { deviceId: `127.0.0.1:${plain}` });
+  ok(load.data?.source === 'device' && load.data.employees.some(e => e.name === 'Tanvir Hasan'), 'TCP: load users from device');
+  const add = await req('POST', '/api/employees', { uid: 4000, employee_id: '2040', name: 'Nusrat Jahan', privilege: 0 });
+  ok(add.data?.syncResults?.[0]?.synced === true, 'TCP: write user with UID above 3000');
+  const del = await req('DELETE', '/api/employees/2');
+  ok(del.data?.syncResults?.[0]?.synced === true, 'TCP: delete user');
+  if (keyed) {
+    const bad = await req('POST', '/api/devices/tcp/connect', { ip: '127.0.0.1', port: Number(keyed), password: '9999' });
+    ok(bad.data?.success === false, 'TCP: wrong comm key rejected');
+    const good = await req('POST', '/api/devices/tcp/connect', { ip: '127.0.0.1', port: Number(keyed), password: '1234' });
+    ok(good.data?.success === true, 'TCP: correct comm key accepted');
+    await req('POST', '/api/devices/tcp/disconnect', { deviceId: `127.0.0.1:${keyed}` });
+  }
+  await req('POST', '/api/devices/tcp/disconnect', { deviceId: `127.0.0.1:${plain}` });
+}
+
 async function full() {
   const child = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js')], { cwd: ROOT, stdio: 'inherit' });
   ok(await waitUp(), 'server started');
@@ -178,6 +205,7 @@ async function full() {
   const anon = await fetch(BASE + '/api/state');
   ok(anon.status === 401, 'API requires login');
 
+  await tcpTest();
   await restartTest();
 
   // Stop the (restarted, detached) server via its pid file

@@ -5,7 +5,7 @@ const cron = require('node-cron');
 const { exec } = require('child_process');
 const { store, getState, clearLogs, upsertEmployee, deleteEmployee, markAttendancePushed, markEmployeesSynced, savePermissions, DEFAULT_PERMISSIONS, saveConfigFile } = require('./store');
 const { testConnection, fetchEmployees, pushAttendance } = require('./laravel/api');
-const { connectTCPDevice, fetchAttendanceFromTCP, disconnectTCPDevice, syncEmployeesToTCP, getEmployeesFromDevice, setEmployeeOnDevice, deleteEmployeeFromDevice } = require('./tcpip/connector');
+const { connectTCPDevice, fetchAttendanceFromTCP, fetchAllTCP, disconnectTCPDevice, syncEmployeesToTCP, getEmployeesFromDevice, setEmployeeOnDevice, deleteEmployeeFromDevice } = require('./tcpip/connector');
 const { requestSetUserOnADMS, requestDeleteUserOnADMS, requestUsersFromADMS, requestAttLogsFromADMS, pendingOptionPush, restartADMSServer, deviceUserCache } = require('./adms/server');
 const { updateSchedule, getSchedulerStatus } = require('./scheduler');
 const logger = require('./logger');
@@ -258,17 +258,11 @@ router.post('/laravel/push-attendance', requirePerm('attendance.btn_push_laravel
 router.post('/laravel/sync-all', requirePerm('attendance.btn_push_laravel'), async (req, res) => {
   const steps = [];
 
-  // Step 1: fetch from TCP devices
-  const tcpDevices = Object.values(store.devices).filter(d => d.type === 'tcp' && d.status === 'connected');
-  let tcpFetched = 0;
-  for (const d of tcpDevices) {
-    try {
-      const r = await fetchAttendanceFromTCP(d.id);
-      tcpFetched += r.count || 0;
-      steps.push({ step: 'tcp_fetch', device: d.id, success: r.success, count: r.count || 0, error: r.error });
-    } catch (e) {
-      steps.push({ step: 'tcp_fetch', device: d.id, success: false, error: e.message });
-    }
+  // Step 1: fetch from TCP devices (reconnects to devices that dropped an idle connection)
+  const tcp = await fetchAllTCP();
+  const tcpFetched = tcp.fetched;
+  for (const r of tcp.results) {
+    steps.push({ step: 'tcp_fetch', device: r.deviceId, success: r.success, count: r.count || 0, error: r.error });
   }
 
   // ADMS data is already in store (pushed in real-time)
@@ -449,7 +443,25 @@ router.get('/employees', requirePerm('nav.employees'), (req, res) => {
 
 // Load employees from device (or bridge store if device doesn't push)
 router.post('/employees/load-from-device', requirePerm('employees.btn_load_machine'), async (req, res) => {
-  const admsDevices = Object.values(store.devices).filter(d => d.type === 'adms' && d.status === 'connected');
+  // Optional deviceId picks the device; otherwise the first ADMS device, then the first TCP device
+  const picked = req.body?.deviceId ? store.devices[req.body.deviceId] : null;
+  if (req.body?.deviceId && !picked) return res.status(404).json({ success: false, error: 'Device not found' });
+  const admsDevices = picked
+    ? (picked.type === 'adms' ? [picked] : [])
+    : Object.values(store.devices).filter(d => d.type === 'adms' && d.status === 'connected');
+  const tcpDevice = picked
+    ? (picked.type === 'tcp' ? picked : null)
+    : Object.values(store.devices).find(d => d.type === 'tcp' && d.status === 'connected');
+  if (!admsDevices.length && tcpDevice) {
+    const result = await getEmployeesFromDevice(tcpDevice.id);
+    if (result.success) {
+      for (const e of result.employees) if (e.uid > 0) upsertEmployee({ ...e, syncedToDevice: true });
+      markEmployeesSynced(result.employees.map(e => String(e.uid)));
+      const employees = result.employees.map(e => store.employees[String(e.uid)]).filter(Boolean);
+      return res.json({ success: true, employees, source: 'device', total: employees.length });
+    }
+    logger.warn(`Load from TCP device ${tcpDevice.id} failed: ${result.error}`);
+  }
   if (!admsDevices.length) {
     const synced = Object.values(store.employees).filter(e => e.syncedToDevice);
     return res.json({ success: true, employees: synced, source: 'bridge', total: synced.length, warning: 'No ADMS device connected — showing bridge-synced employees' });

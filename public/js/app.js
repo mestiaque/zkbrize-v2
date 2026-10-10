@@ -578,8 +578,36 @@ async function syncEmployees() {
 }
 
 // ── Bridge Employee Management ────────────────────────────────────
+// With several connected devices, ask which one to read users from
 function showLoadFromMachineModal() {
-  loadBridgeEmployees(true);
+  const devices = (state.devices || []).filter(d => d.status === 'connected');
+  if (devices.length <= 1) { loadBridgeEmployees(true, devices[0]?.id); return; }
+  const list = document.getElementById('pick-device-list');
+  list.replaceChildren();
+  devices.forEach((d, i) => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);cursor:pointer';
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'pick-device'; radio.value = d.id; radio.checked = i === 0;
+    radio.style.width = 'auto';
+    const text = document.createElement('div');
+    const name = document.createElement('div');
+    name.style.fontWeight = '500';
+    name.textContent = d.name;
+    const meta = document.createElement('div');
+    meta.className = 'field-hint';
+    meta.textContent = `${d.type.toUpperCase()} · ${d.ip || ''} · ${d.sn || d.id}`;
+    text.append(name, meta);
+    label.append(radio, text);
+    list.appendChild(label);
+  });
+  document.getElementById('modal-pick-device').style.display = 'flex';
+}
+
+function confirmPickDevice() {
+  const picked = document.querySelector('input[name="pick-device"]:checked');
+  closeModal('modal-pick-device');
+  if (picked) loadBridgeEmployees(true, picked.value);
 }
 
 async function importFromERP() {
@@ -597,14 +625,14 @@ async function importFromERP() {
   loadBridgeEmployees();
 }
 
-async function loadBridgeEmployees(fromDevice = false) {
+async function loadBridgeEmployees(fromDevice = false, deviceId = null) {
   const wrap = document.getElementById('employee-table-wrap');
   wrap.innerHTML = '<div class="empty-state">Loading...</div>';
 
   let res;
   if (fromDevice) {
     toast('Requesting employee list from device…', 'info');
-    res = await api('/employees/load-from-device', {}, 'POST');
+    res = await api('/employees/load-from-device', deviceId ? { deviceId } : {}, 'POST');
   } else {
     res = await api('/employees', null, 'GET');
   }

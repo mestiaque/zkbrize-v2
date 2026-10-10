@@ -18,7 +18,7 @@ const branding = require('./branding');
 const { setEnvValues } = require('./envfile');
 const { onShutdown, closeAll } = require('./restart');
 const { startADMSServer, stopADMSServer, setSocketIO: admsSetIO } = require('./adms/server');
-const { setSocketIO: tcpSetIO } = require('./tcpip/connector');
+const { setSocketIO: tcpSetIO, disconnectAllTCP } = require('./tcpip/connector');
 const { startScheduler, setSocketIO: schedSetIO } = require('./scheduler');
 
 // Settings: data/config.json first, then .env on top (.env is the source of truth;
@@ -182,6 +182,7 @@ onShutdown(() => {
   try { if (fs.readFileSync(PID_FILE, 'utf8').trim() === String(process.pid)) fs.unlinkSync(PID_FILE); } catch {}
 });
 onShutdown(() => saveAttendanceFile());
+onShutdown(() => disconnectAllTCP());
 onShutdown(() => stopADMSServer());
 onShutdown(() => new Promise(resolve => {
   io.close();

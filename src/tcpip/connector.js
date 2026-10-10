@@ -1,444 +1,351 @@
-const net = require('net');
+// TCP/IP (pull) connector for ZKTeco devices without ADMS.
+// The binary protocol is handled by the zkteco-js library (TCP with UDP
+// fallback). This file adds what the bridge needs on top of it: one queue per
+// device, automatic reconnects, the comm-key login, and user writes that follow
+// the device's 72-byte user record (zkteco-js limits UIDs to 3000).
+const ZktecoJs = require('zkteco-js');
 const logger = require('../logger');
-const { addDevice, updateDevice, addAttendanceLog, addSyncLog, store } = require('../store');
+const { addDevice, updateDevice, addAttendanceLog, addSyncLog } = require('../store');
 
 let io = null;
 function setSocketIO(socketio) { io = socketio; }
 function emit(event, data) { if (io) io.emit(event, data); }
 
-// ZKTeco binary protocol constants
-const USHRT_MAX = 65535;
-const ZK_CMD = {
-  CONNECT: 1000, DISCONNECT: 1001, ACK_OK: 2000, ACK_UNAUTH: 2001,
-  ACK_FAIL: 2002, PREPARE_DATA: 1500, DATA: 1501, FREE_DATA: 1502,
-  GET_TIME: 201, SET_TIME: 202, ENABLE_DEVICE: 224, DISABLE_DEVICE: 223,
-  VERSION: 1100, GET_ATTENDANCE: 13, CLEAR_ATTENDANCE: 14,
-  GET_ALL_USER_INFO: 9, SET_USER_INFO: 8, DELETE_USER: 18,
+const CMD = {
+  AUTH: 1102,
+  USER_WRQ: 8,
+  DELETE_USER: 18,
+  REFRESHDATA: 1013,
+  ACK_OK: 2000,
+  ACK_UNAUTH: 2005,
 };
 
-function createHeader(command, checksum, sessionId, replyId, data) {
-  const buf = Buffer.alloc(8 + (data ? data.length : 0));
-  buf.writeUInt16LE(command, 0);
-  buf.writeUInt16LE(checksum, 2);
-  buf.writeUInt16LE(sessionId, 4);
-  buf.writeUInt16LE(replyId, 6);
-  if (data) data.copy(buf, 8);
+const VERIFY_METHODS = { 0: 'password', 1: 'fingerprint', 2: 'card', 3: 'card', 4: 'card', 15: 'face' };
+const DEFAULT_TIMEOUT = 10000;
+
+// deviceId -> { config, zk, queue }
+const tcpDevices = {};
+
+// ── Protocol helpers ───────────────────────────────────────────────
+
+// Comm key ("communication password") scrambled with the session id, as the
+// device expects for CMD_AUTH (same algorithm as pyzk's make_commkey)
+function makeCommKey(key, sessionId, ticks = 50) {
+  key = parseInt(key, 10) >>> 0;
+  let k = 0;
+  for (let i = 0; i < 32; i++) k = ((key & (1 << i)) ? ((k << 1) | 1) : (k << 1)) >>> 0;
+  k = (k + (sessionId >>> 0)) >>> 0;
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(k, 0);
+  const x = Buffer.from([b[0] ^ 0x5a, b[1] ^ 0x4b, b[2] ^ 0x53, b[3] ^ 0x4f]); // 'Z' 'K' 'S' 'O'
+  const swapped = Buffer.alloc(4);
+  swapped.writeUInt16LE(x.readUInt16LE(2), 0);
+  swapped.writeUInt16LE(x.readUInt16LE(0), 2);
+  const t = ticks & 0xff;
+  return Buffer.from([swapped[0] ^ t, swapped[1] ^ t, t, swapped[3] ^ t]);
+}
+
+function replyCode(reply) {
+  return reply && reply.length >= 2 ? reply.readUInt16LE(0) : null;
+}
+
+const pad = n => String(n).padStart(2, '0');
+function formatTime(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// 72-byte user record: uid(2) privilege(1) password(8) name(24) card(4) pad(1)
+// group(7) pad(1) user_id(24)
+function userRecord(emp) {
+  const uid = parseInt(emp.uid, 10);
+  if (!(uid >= 1 && uid <= 65535)) throw new Error(`UID must be 1-65535 (got ${emp.uid})`);
+  const buf = Buffer.alloc(72);
+  buf.writeUInt16LE(uid, 0);
+  buf.writeUInt8(parseInt(emp.privilege, 10) || 0, 2);
+  buf.write(String(emp.password || '').slice(0, 8), 3, 8, 'ascii');
+  buf.write(String(emp.name || '').slice(0, 24), 11, 24, 'utf8');
+  buf.writeUInt32LE((parseInt(emp.card_no, 10) || 0) >>> 0, 35);
+  buf.write('1', 40, 7, 'ascii');
+  buf.write(String(emp.employee_id || emp.employeeId || uid).slice(0, 24), 48, 24, 'ascii');
   return buf;
 }
 
-function calcChecksum(buf) {
-  let i = 0;
-  let chk = 0;
-  const l = buf.length;
-  if (l % 2 === 1) { chk = buf[l - 1]; }
-  for (; i < Math.floor(l / 2); i++) {
-    chk = chk + buf.readUInt16LE(i * 2);
-  }
-  while (chk > USHRT_MAX) { chk = (chk & USHRT_MAX) + (chk >> 16); }
-  chk = USHRT_MAX - chk;
-  return chk;
+// ── Connection management ─────────────────────────────────────────
+
+function isOpen(zk) {
+  return !!(zk && ((zk.connectionType === 'tcp' && zk.ztcp.socket) || (zk.connectionType === 'udp' && zk.zudp.socket)));
 }
 
-class ZKDevice {
-  constructor(config) {
-    this.ip = config.ip;
-    this.port = config.port || 4370;
-    this.timeout = config.timeout || 5000;
-    this.password = config.password || 0;
-    this.id = config.id || `${config.ip}:${config.port || 4370}`;
-    this.name = config.name || `TCP Device (${config.ip})`;
+async function openConnection(entry) {
+  const { config } = entry;
+  const zk = new ZktecoJs(config.ip, config.port, config.timeout || DEFAULT_TIMEOUT);
+  // Devices close idle sockets; that is normal, so the device keeps its status and
+  // the next operation reconnects (withDevice). Real failures set status "error".
+  await zk.createSocket(null, () => {});
 
-    this.socket = null;
-    this.sessionId = 0;
-    this.replyId = 0;
-    this.connected = false;
-    this._responseCallbacks = [];
-    this._buffer = Buffer.alloc(0);
-  }
-
-  _send(command, data) {
-    return new Promise((resolve, reject) => {
-      const payload = data || Buffer.alloc(0);
-      const buf = createHeader(command, 0, this.sessionId, this.replyId, payload);
-      const chk = calcChecksum(buf);
-      buf.writeUInt16LE(chk, 2);
-
-      const timer = setTimeout(() => {
-        this._responseCallbacks = this._responseCallbacks.filter(cb => cb !== handler);
-        reject(new Error(`Timeout waiting for response to cmd ${command}`));
-      }, this.timeout);
-
-      const handler = (response) => {
-        clearTimeout(timer);
-        resolve(response);
-      };
-      this._responseCallbacks.push(handler);
-      this.socket.write(buf);
-    });
-  }
-
-  _onData(chunk) {
-    this._buffer = Buffer.concat([this._buffer, chunk]);
-    while (this._buffer.length >= 8) {
-      const len = 8; // base header; real data follows
-      const packet = this._buffer.slice(0, len);
-      this._buffer = this._buffer.slice(len);
-
-      const cmd = packet.readUInt16LE(0);
-      const sessionId = packet.readUInt16LE(4);
-      if (this.sessionId === 0 && cmd === ZK_CMD.ACK_OK) {
-        this.sessionId = sessionId;
-      }
-
-      const cb = this._responseCallbacks.shift();
-      if (cb) cb({ cmd, sessionId, data: this._buffer });
+  if (config.password && zk.connectionType === 'tcp') {
+    const reply = await zk.ztcp.executeCmd(CMD.AUTH, makeCommKey(config.password, zk.ztcp.sessionId));
+    if (replyCode(reply) !== CMD.ACK_OK) {
+      try { await zk.disconnect(); } catch {}
+      throw new Error('Device rejected the comm key (password)');
     }
   }
-
-  async connect() {
-    return new Promise((resolve, reject) => {
-      this.socket = new net.Socket();
-      this.socket.setTimeout(this.timeout);
-
-      this.socket.on('data', (chunk) => this._onData(chunk));
-      this.socket.on('error', (err) => {
-        this.connected = false;
-        updateDevice(this.id, { status: 'error', error: err.message });
-        reject(err);
-      });
-      this.socket.on('timeout', () => {
-        this.connected = false;
-        this.socket.destroy();
-        reject(new Error('Connection timeout'));
-      });
-      this.socket.on('close', () => {
-        this.connected = false;
-        updateDevice(this.id, { status: 'disconnected' });
-        emit('state_update', { type: 'device_update' });
-      });
-
-      this.socket.connect(this.port, this.ip, async () => {
-        try {
-          const res = await this._send(ZK_CMD.CONNECT);
-          if (res.cmd === ZK_CMD.ACK_OK) {
-            this.connected = true;
-            this.replyId = 1;
-            resolve(true);
-          } else {
-            reject(new Error('Device rejected connection'));
-          }
-        } catch (e) {
-          reject(e);
-        }
-      });
-    });
-  }
-
-  async disconnect() {
-    if (this.socket) {
-      try { await this._send(ZK_CMD.DISCONNECT); } catch {}
-      this.socket.destroy();
-    }
-    this.connected = false;
-  }
-
-  async getAttendance() {
-    // Request attendance data
-    const res = await this._send(ZK_CMD.GET_ATTENDANCE);
-    if (res.cmd !== ZK_CMD.ACK_OK) throw new Error('Failed to request attendance');
-
-    // Data follows in chunks
-    const records = [];
-    // In real ZK protocol data comes via PREPARE_DATA + DATA packets
-    // Here we parse the buffer that arrived with the response
-    const data = res.data || Buffer.alloc(0);
-    const recordSize = 40;
-    for (let i = 0; i + recordSize <= data.length; i += recordSize) {
-      try {
-        const uid = data.readUInt16LE(i);
-        const employeeId = data.slice(i + 2, i + 10).toString('utf8').replace(/\0/g, '').trim();
-        const status = data.readUInt8(i + 10);
-        const second = data.readUInt8(i + 11);
-        const minute = data.readUInt8(i + 12);
-        const hour = data.readUInt8(i + 13);
-        const day = data.readUInt8(i + 14);
-        const month = data.readUInt8(i + 15);
-        const year = data.readUInt16LE(i + 16) + 2000;
-        const time = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')} ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}`;
-        records.push({ uid, employeeId, status, time });
-      } catch {}
-    }
-    return records;
-  }
-
-  async getUsers() {
-    const res = await this._send(ZK_CMD.GET_ALL_USER_INFO);
-    if (res.cmd !== ZK_CMD.ACK_OK) throw new Error('Failed to get users');
-
-    const users = [];
-    const data = res.data || Buffer.alloc(0);
-    const userSize = 72;
-    for (let i = 0; i + userSize <= data.length; i += userSize) {
-      try {
-        const uid = data.readUInt16LE(i);
-        const privilege = data.readUInt8(i + 2);
-        const password = data.slice(i + 3, i + 11).toString('utf8').replace(/\0/g, '');
-        const name = data.slice(i + 11, i + 35).toString('utf8').replace(/\0/g, '').trim();
-        const employeeId = data.slice(i + 35, i + 43).toString('utf8').replace(/\0/g, '').trim();
-        users.push({ uid, privilege, password, name, employeeId });
-      } catch {}
-    }
-    return users;
-  }
-
-  async setUser(uid, employeeId, name, password = '', privilege = 0) {
-    const buf = Buffer.alloc(72);
-    buf.writeUInt16LE(uid, 0);
-    buf.writeUInt8(privilege, 2);
-    buf.write(password.padEnd(8, '\0'), 3, 'utf8');
-    buf.write(name.padEnd(24, '\0'), 11, 'utf8');
-    buf.write(employeeId.padEnd(8, '\0'), 35, 'utf8');
-    const res = await this._send(ZK_CMD.SET_USER_INFO, buf);
-    return res.cmd === ZK_CMD.ACK_OK;
-  }
-
-  async deleteUser(uid) {
-    const buf = Buffer.alloc(2);
-    buf.writeUInt16LE(uid, 0);
-    const res = await this._send(ZK_CMD.DELETE_USER, buf);
-    return res.cmd === ZK_CMD.ACK_OK;
-  }
+  entry.zk = zk;
+  return zk;
 }
 
-// Active TCP device connections
-const tcpDevices = {};
+// Runs fn(zk) for one device at a time, reconnecting first when the device
+// has dropped the connection (devices close idle sockets)
+function withDevice(deviceId, fn) {
+  const entry = tcpDevices[deviceId];
+  if (!entry) return Promise.reject(new Error('Device not connected'));
+  const run = async () => {
+    try {
+      const zk = isOpen(entry.zk) ? entry.zk : await openConnection(entry);
+      const result = await fn(zk);
+      updateDevice(deviceId, { status: 'connected', error: null });
+      return result;
+    } catch (err) {
+      updateDevice(deviceId, { status: 'error', error: err.message });
+      emit('state_update', { type: 'device_update' });
+      try { if (entry.zk) await entry.zk.disconnect(); } catch {}
+      entry.zk = null;
+      throw err;
+    }
+  };
+  const next = entry.queue.then(run, run);
+  entry.queue = next.catch(() => {});
+  return next;
+}
+
+function errorMessage(err) {
+  return err?.err?.message || err?.message || String(err);
+}
+
+// ── Public API (used by routes.js and scheduler.js) ───────────────
 
 async function connectTCPDevice(config) {
-  const deviceId = config.id || `${config.ip}:${config.port || 4370}`;
+  const port = parseInt(config.port, 10) || 4370;
+  const deviceId = config.id || `${config.ip}:${port}`;
+  const deviceInfo = {
+    id: deviceId,
+    sn: deviceId,
+    type: 'tcp',
+    name: config.name || `TCP Device (${config.ip})`,
+    ip: config.ip,
+    port,
+    model: 'ZKTeco (TCP/IP)',
+  };
 
-  if (tcpDevices[deviceId]) {
-    try { await tcpDevices[deviceId].disconnect(); } catch {}
-  }
+  if (tcpDevices[deviceId]) await disconnectTCPDevice(deviceId);
 
-  const device = new ZKDevice(config);
+  const entry = {
+    config: { id: deviceId, ip: config.ip, port, password: config.password || '', timeout: config.timeout },
+    zk: null,
+    queue: Promise.resolve(),
+  };
+  tcpDevices[deviceId] = entry;
+
   try {
-    await device.connect();
-    tcpDevices[deviceId] = device;
+    const zk = await openConnection(entry);
+    // Device details (TCP only; one request at a time on the same socket)
+    const extra = {};
+    if (zk.connectionType === 'tcp') {
+      const ask = async fn => { try { return String(await fn() || '').trim(); } catch { return ''; } };
+      const serial = await ask(() => zk.getSerialNumber());
+      const model = await ask(() => zk.getDeviceName());
+      const firmware = await ask(() => zk.getFirmware());
+      if (serial) extra.sn = serial;
+      if (model) extra.model = model;
+      if (firmware) extra.firmware = firmware;
+    }
 
-    addDevice({
-      id: deviceId,
-      sn: deviceId,
-      type: 'tcp',
-      name: config.name || `TCP Device (${config.ip})`,
-      ip: config.ip,
-      port: config.port || 4370,
-      model: 'ZKTeco (TCP/IP)',
-    });
-
-    logger.info(`TCP device connected: ${deviceId}`);
+    addDevice({ ...deviceInfo, ...extra });
+    logger.info(`TCP device connected: ${deviceId} (${zk.connectionType.toUpperCase()})`);
     emit('device_connected', { deviceId, type: 'tcp' });
     emit('state_update', { type: 'device_update' });
-
     return { success: true, deviceId };
   } catch (err) {
-    logger.error(`Failed to connect TCP device ${deviceId}: ${err.message}`);
-    addDevice({
-      id: deviceId,
-      sn: deviceId,
-      type: 'tcp',
-      name: config.name || `TCP Device (${config.ip})`,
-      ip: config.ip,
-      port: config.port || 4370,
-      model: 'ZKTeco (TCP/IP)',
-      status: 'error',
-      error: err.message,
-    });
+    const msg = errorMessage(err);
+    delete tcpDevices[deviceId];
+    logger.error(`Failed to connect TCP device ${deviceId}: ${msg}`);
+    addDevice({ ...deviceInfo, status: 'error', error: msg });
     emit('state_update', { type: 'device_update' });
-    return { success: false, error: err.message };
+    return { success: false, error: msg };
   }
 }
 
 async function fetchAttendanceFromTCP(deviceId, fromDate = null, toDate = null) {
-  const device = tcpDevices[deviceId];
-  if (!device || !device.connected) {
-    return { success: false, error: 'Device not connected' };
-  }
-
+  if (!tcpDevices[deviceId]) return { success: false, error: 'Device not connected' };
   try {
-    const records = await device.getAttendance();
+    const result = await withDevice(deviceId, zk => zk.getAttendances());
+    const records = result?.data || [];
     logger.info(`Fetched ${records.length} attendance records from TCP device ${deviceId}`);
 
-    const from = fromDate ? new Date(fromDate + 'T00:00:00') : null;
-    const to   = toDate   ? new Date(toDate   + 'T23:59:59') : null;
-
-    let saved = 0;
+    let saved = 0, skipped = 0;
     for (const rec of records) {
-      if (from || to) {
-        const recDate = new Date(rec.time);
-        if (from && recDate < from) continue;
-        if (to   && recDate > to)   continue;
-      }
+      const time = formatTime(rec.record_time);
+      const employeeId = String(rec.user_id ?? '').trim();
+      if (!time || !employeeId) { skipped++; continue; }
+      const date = time.slice(0, 10);
+      if (fromDate && date < fromDate) continue;
+      if (toDate && date > toDate) continue;
+      const verify = rec.type !== undefined ? String(rec.type) : '';
       const record = {
         deviceId,
-        employeeId: rec.employeeId,
-        time: rec.time,
-        status: String(rec.status),
+        employeeId,
+        time,
+        status: String(rec.state ?? 0),
+        ...(verify ? { verify, verifyMethod: VERIFY_METHODS[verify] || 'fingerprint' } : {}),
         source: 'tcp',
       };
-      addAttendanceLog(record);
-      emit('attendance', record);
-      saved++;
+      if (addAttendanceLog(record)) {
+        emit('attendance', record);
+        saved++;
+      }
     }
+    if (skipped) logger.warn(`TCP ${deviceId}: skipped ${skipped} unreadable attendance records`);
 
     addSyncLog({
       type: 'tcp_attendance_fetch',
       status: 'success',
       deviceId,
       count: saved,
-      message: `Fetched ${saved} records from ${deviceId}` + (from || to ? ` (filtered from ${records.length})` : ''),
+      message: `Fetched ${saved} new records from ${deviceId} (${records.length} on device)`,
     });
-
     emit('state_update', { type: 'attendance', count: saved });
     return { success: true, count: saved, total: records.length };
   } catch (err) {
-    logger.error(`Failed to fetch attendance from ${deviceId}: ${err.message}`);
-    return { success: false, error: err.message };
+    const msg = errorMessage(err);
+    logger.error(`Failed to fetch attendance from ${deviceId}: ${msg}`);
+    addSyncLog({ type: 'tcp_attendance_fetch', status: 'error', deviceId, message: msg });
+    return { success: false, error: msg };
+  }
+}
+
+async function writeUser(zk, emp) {
+  if (zk.connectionType !== 'tcp') throw new Error('Writing users needs a TCP connection');
+  const reply = await zk.ztcp.executeCmd(CMD.USER_WRQ, userRecord(emp));
+  if (replyCode(reply) !== CMD.ACK_OK) throw new Error(`Device refused user ${emp.uid}`);
+}
+
+async function refreshData(zk) {
+  if (zk.connectionType === 'tcp') {
+    try { await zk.ztcp.executeCmd(CMD.REFRESHDATA, ''); } catch {}
   }
 }
 
 async function syncEmployeesToTCP(deviceId, employees) {
-  const device = tcpDevices[deviceId];
-  if (!device || !device.connected) {
-    return { success: false, error: 'Device not connected' };
-  }
-
+  if (!tcpDevices[deviceId]) return { success: false, error: 'Device not connected' };
   let synced = 0;
-  for (const emp of employees) {
-    try {
-      await device.setUser(
-        emp.uid || emp.id,
-        String(emp.employee_id || emp.id),
-        emp.name || '',
-        emp.password || '',
-        emp.privilege || 0
-      );
-      synced++;
-    } catch (err) {
-      logger.warn(`Failed to sync employee ${emp.id} to device: ${err.message}`);
-    }
+  const failed = [];
+  try {
+    await withDevice(deviceId, async zk => {
+      for (const emp of employees) {
+        const e = { ...emp, uid: emp.uid || emp.id, employee_id: emp.employee_id || emp.pin || emp.uid || emp.id };
+        try {
+          await writeUser(zk, e);
+          synced++;
+        } catch (err) {
+          failed.push(`${e.uid}: ${errorMessage(err)}`);
+        }
+      }
+      await refreshData(zk);
+    });
+  } catch (err) {
+    return { success: false, error: errorMessage(err), synced };
   }
+  if (failed.length) logger.warn(`TCP ${deviceId}: ${failed.length} employee(s) not synced — ${failed.slice(0, 5).join('; ')}`);
 
   updateDevice(deviceId, { employeesSynced: synced });
   addSyncLog({
     type: 'employee_sync_tcp',
-    status: 'success',
+    status: failed.length ? 'partial' : 'success',
     deviceId,
     count: synced,
     message: `Synced ${synced}/${employees.length} employees to ${deviceId}`,
   });
-
-  return { success: true, synced, total: employees.length };
+  return { success: synced > 0 || employees.length === 0, synced, total: employees.length, failed: failed.length };
 }
 
 async function getEmployeesFromDevice(deviceId) {
-  const device = tcpDevices[deviceId];
-  if (!device || !device.connected) return { success: false, error: 'Device not connected' };
+  if (!tcpDevices[deviceId]) return { success: false, error: 'Device not connected' };
   try {
-    const users = await device.getUsers();
-    return { success: true, employees: users };
+    const result = await withDevice(deviceId, zk => zk.getUsers());
+    const employees = (result?.data || []).map(u => ({
+      uid: u.uid,
+      employee_id: String(u.userId || u.uid),
+      name: u.name || '',
+      password: u.password || '',
+      privilege: u.role || 0,
+      card_no: u.cardno ? String(u.cardno) : '',
+    }));
+    return { success: true, employees };
   } catch (err) {
-    logger.error(`Failed to get employees from ${deviceId}: ${err.message}`);
-    return { success: false, error: err.message };
-  }
-}
-
-async function getEmployeesFromIP(ip, port = 4370) {
-  const temp = new ZKDevice({ ip, port, timeout: 8000, id: `temp-${ip}` });
-  try {
-    await temp.connect();
-    const users = await temp.getUsers();
-    await temp.disconnect();
-    return { success: true, employees: users };
-  } catch (err) {
-    try { await temp.disconnect(); } catch {}
-    logger.error(`Failed to get employees from ${ip}:${port} — ${err.message}`);
-    return { success: false, error: err.message };
+    const msg = errorMessage(err);
+    logger.error(`Failed to get employees from ${deviceId}: ${msg}`);
+    return { success: false, error: msg };
   }
 }
 
 async function setEmployeeOnDevice(deviceId, emp) {
-  const device = tcpDevices[deviceId];
-  if (!device || !device.connected) return { success: false, error: 'Device not connected' };
+  if (!tcpDevices[deviceId]) return { success: false, error: 'Device not connected' };
   try {
-    const ok = await device.setUser(
-      emp.uid,
-      String(emp.employee_id || emp.employeeId || ''),
-      emp.name || '',
-      emp.password || '',
-      emp.privilege || 0
-    );
-    if (ok) addSyncLog({ type: 'employee_set', status: 'success', deviceId, message: `Set employee UID=${emp.uid} on ${deviceId}` });
-    return { success: ok };
+    await withDevice(deviceId, async zk => { await writeUser(zk, emp); await refreshData(zk); });
+    addSyncLog({ type: 'employee_set', status: 'success', deviceId, message: `Set employee UID=${emp.uid} on ${deviceId}` });
+    return { success: true };
   } catch (err) {
-    logger.error(`Failed to set employee on ${deviceId}: ${err.message}`);
-    return { success: false, error: err.message };
-  }
-}
-
-async function setEmployeeViaIP(ip, port = 4370, emp) {
-  const temp = new ZKDevice({ ip, port, timeout: 8000, id: `temp-${ip}` });
-  try {
-    await temp.connect();
-    const ok = await temp.setUser(
-      emp.uid,
-      String(emp.employee_id || emp.employeeId || ''),
-      emp.name || '',
-      emp.password || '',
-      emp.privilege || 0
-    );
-    await temp.disconnect();
-    return { success: ok };
-  } catch (err) {
-    try { await temp.disconnect(); } catch {}
-    logger.error(`Failed to set employee on ${ip}: ${err.message}`);
-    return { success: false, error: err.message };
+    const msg = errorMessage(err);
+    logger.error(`Failed to set employee on ${deviceId}: ${msg}`);
+    return { success: false, error: msg };
   }
 }
 
 async function deleteEmployeeFromDevice(deviceId, uid) {
-  const device = tcpDevices[deviceId];
-  if (!device || !device.connected) return { success: false, error: 'Device not connected' };
+  if (!tcpDevices[deviceId]) return { success: false, error: 'Device not connected' };
   try {
-    const ok = await device.deleteUser(Number(uid));
-    if (ok) addSyncLog({ type: 'employee_delete', status: 'success', deviceId, message: `Deleted employee UID=${uid} from ${deviceId}` });
-    return { success: ok };
+    await withDevice(deviceId, async zk => {
+      if (zk.connectionType !== 'tcp') throw new Error('Deleting users needs a TCP connection');
+      const buf = Buffer.alloc(2);
+      buf.writeUInt16LE(parseInt(uid, 10), 0);
+      const reply = await zk.ztcp.executeCmd(CMD.DELETE_USER, buf);
+      if (replyCode(reply) !== CMD.ACK_OK) throw new Error(`Device refused to delete user ${uid}`);
+      await refreshData(zk);
+    });
+    addSyncLog({ type: 'employee_delete', status: 'success', deviceId, message: `Deleted employee UID=${uid} from ${deviceId}` });
+    return { success: true };
   } catch (err) {
-    logger.error(`Failed to delete employee UID=${uid} from ${deviceId}: ${err.message}`);
-    return { success: false, error: err.message };
-  }
-}
-
-async function deleteEmployeeViaIP(ip, port = 4370, uid) {
-  const temp = new ZKDevice({ ip, port, timeout: 8000, id: `temp-${ip}` });
-  try {
-    await temp.connect();
-    const ok = await temp.deleteUser(Number(uid));
-    await temp.disconnect();
-    return { success: ok };
-  } catch (err) {
-    try { await temp.disconnect(); } catch {}
-    logger.error(`Failed to delete employee UID=${uid} from ${ip}: ${err.message}`);
-    return { success: false, error: err.message };
+    const msg = errorMessage(err);
+    logger.error(`Failed to delete employee UID=${uid} from ${deviceId}: ${msg}`);
+    return { success: false, error: msg };
   }
 }
 
 async function disconnectTCPDevice(deviceId) {
-  if (tcpDevices[deviceId]) {
-    await tcpDevices[deviceId].disconnect();
-    delete tcpDevices[deviceId];
-    updateDevice(deviceId, { status: 'disconnected' });
-    emit('state_update', { type: 'device_update' });
+  const entry = tcpDevices[deviceId];
+  if (!entry) return;
+  delete tcpDevices[deviceId];
+  try { if (entry.zk) await entry.zk.disconnect(); } catch {}
+  updateDevice(deviceId, { status: 'disconnected' });
+  emit('state_update', { type: 'device_update' });
+}
+
+// Fetch from every TCP device the bridge knows (used by the schedule and Sync Now)
+async function fetchAllTCP() {
+  let fetched = 0;
+  const results = [];
+  for (const deviceId of Object.keys(tcpDevices)) {
+    const r = await fetchAttendanceFromTCP(deviceId);
+    fetched += r.count || 0;
+    results.push({ deviceId, ...r });
   }
+  return { fetched, results };
+}
+
+async function disconnectAllTCP() {
+  await Promise.all(Object.keys(tcpDevices).map(disconnectTCPDevice));
 }
 
 module.exports = {
@@ -446,12 +353,13 @@ module.exports = {
   fetchAttendanceFromTCP,
   syncEmployeesToTCP,
   getEmployeesFromDevice,
-  getEmployeesFromIP,
   setEmployeeOnDevice,
-  setEmployeeViaIP,
   deleteEmployeeFromDevice,
-  deleteEmployeeViaIP,
   disconnectTCPDevice,
+  disconnectAllTCP,
+  fetchAllTCP,
   setSocketIO,
   tcpDevices,
+  makeCommKey,
+  userRecord,
 };

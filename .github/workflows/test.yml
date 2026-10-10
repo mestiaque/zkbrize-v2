@@ -33,7 +33,21 @@ jobs:
           sed -i 's/^PORT=.*/PORT=3200/' .env
           grep -q '^SESSION_SECRET=.\+' .env
 
-      - name: Install wizard, auth, permissions, ping, restart
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Start TCP device emulators
+        shell: bash
+        run: |
+          nohup python .github/ci/zk_emulator.py 14371 > emu1.log 2>&1 &
+          nohup python .github/ci/zk_emulator.py 14372 1234 > emu2.log 2>&1 &
+          sleep 2
+
+      - name: Install wizard, auth, permissions, TCP devices, ping, restart
+        env:
+          ZK_EMU_PORT: '14371'
+          ZK_EMU_KEY_PORT: '14372'
         run: node .github/ci/smoke.js full
 
       # ── Windows launchers ─────────────────────────────────────────

@@ -266,9 +266,10 @@ npm start</code></pre></li>
   <ol class="steps">
     <li>Give the device a fixed IP address (<b>Menu → COMM → Ethernet</b>).</li>
     <li>On the <b>Devices</b> page, use <b>Network Ping Test</b> to check that the bridge can reach it.</li>
-    <li>Under <b>Add TCP/IP Device</b>, enter the IP, port (default <code>4370</code>), a name, and the device communication password if one is set. Click <b>Connect Device</b>.</li>
-    <li>Use <b>Attendance → Fetch TCP</b>, or <b>Sync Now</b> on the dashboard, to read punches from the device.</li>
+    <li>Under <b>Add TCP/IP Device</b>, enter the IP, port (default <code>4370</code>), a name, and the device's <b>Comm Key</b> (Menu → COMM → PC Connection → Comm Key) if one is set. Click <b>Connect Device</b>. The device's model, serial number and firmware appear in the device list.</li>
+    <li>Punches are read automatically every time <b>Attendance Push</b> runs (see <a href="#schedule">Sync schedule</a>), and on demand with <b>Attendance → Fetch TCP</b> or <b>Sync Now</b>.</li>
   </ol>
+  <p>Devices close idle connections after a while; ZK Bridge simply reconnects on the next read or write, so a TCP device stays listed as connected. <b>Load from Machine</b>, <b>Set to Device</b>, and adding, editing or deleting an employee all work on TCP devices too. When several devices are connected, <b>Load from Machine</b> asks which one to read from.</p>
 
   <h3 id="firewall">Firewall</h3>
   <p>Devices must be able to reach the ADMS port, and browsers the web port. Allow both on the computer running ZK Bridge.</p>
@@ -458,7 +459,7 @@ class ZKController extends Controller
   <p>In <b>Settings → Sync Schedule</b> you can turn on two automatic jobs and set how often they run:</p>
   <ul>
     <li><b>Employee Sync</b> — imports employees from the ERP and sends new ones to the devices.</li>
-    <li><b>Attendance Push</b> — sends new attendance records (from ADMS devices and earlier TCP/IP fetches) to the ERP.</li>
+    <li><b>Attendance Push</b> — reads new punches from TCP/IP devices, then sends all new attendance records to the ERP. (ADMS devices send punches by themselves.)</li>
   </ul>
   <p>Use the preset buttons, or type a cron expression:</p>
   <table>
@@ -592,6 +593,13 @@ class ZKController extends Controller
   <h4>Attendance is collected but not in the ERP</h4>
   <p>Check that <b>Attendance Push</b> is enabled in Settings, then click <b>Push to ERP</b> on the Attendance page and look at the message and the <b>Logs</b> page. Records stay <i>New</i> until your endpoint returns a <code>2xx</code> status.</p>
 
+  <h4>A TCP/IP device will not connect</h4>
+  <ul>
+    <li>Check the IP and port (<code>4370</code>) on the device: Menu → COMM → Ethernet.</li>
+    <li>If the device has a Comm Key, enter the same number in the password field. “Device rejected the comm key” means it does not match.</li>
+    <li>Only one program can talk to a device over TCP at a time — close ZKTeco desktop software (ZKTime, ZKBio) while testing.</li>
+  </ul>
+
   <h4>Employee names do not change on the device</h4>
   <p>ADMS devices apply changes on their next check-in (up to about 30 seconds). Use <b>Load from Machine</b> afterwards to confirm.</p>
 
@@ -620,6 +628,7 @@ class ZKController extends Controller
     <li>Employee sync from ERP to devices and attendance push to ERP, on demand or on a schedule</li>
     <li>Browser-based setup wizard</li>
     <li>Attendance analytics dashboard; attendance kept across restarts</li>
+    <li>TCP/IP devices: comm key, automatic reconnect, scheduled fetch, user read/write</li>
     <li>Users, custom roles and server-enforced permissions</li>
     <li>White-label branding</li>
     <li>Windows service and systemd installers</li>
@@ -636,6 +645,7 @@ class ZKController extends Controller
     <tr><td>axios</td><td>MIT</td><td>bcryptjs</td><td>BSD-3-Clause</td></tr>
     <tr><td>dotenv</td><td>BSD-2-Clause</td><td>node-cron</td><td>ISC</td></tr>
     <tr><td>winston</td><td>MIT</td><td>node-windows (WinSW)</td><td>MIT</td></tr>
+    <tr><td>zkteco-js</td><td>MIT</td><td></td><td></td></tr>
   </table>
   <p>ZKTeco is a trademark of ZKTeco Co., Ltd. ZK Bridge is an independent product and is not affiliated with or endorsed by ZKTeco.</p>
 </section>
