@@ -17,9 +17,10 @@ in **English and Bengali**.
 8. [ERP API](#erp-api)
 9. [Configuration (.env)](#configuration-env)
 10. [Data, backup and updates](#data-backup-and-updates)
-11. [Troubleshooting](#troubleshooting)
-12. [Project structure](#project-structure)
-13. [বাংলায় দ্রুত শুরু](#বাংলায়-দ্রুত-শুরু)
+11. [Demo mode (portfolio / cPanel)](#demo-mode-portfolio--cpanel)
+12. [Troubleshooting](#troubleshooting)
+13. [Project structure](#project-structure)
+14. [বাংলায় দ্রুত শুরু](#বাংলায়-দ্রুত-শুরু)
 
 ---
 
@@ -340,6 +341,8 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function () {
 | `LOG_LEVEL` | `info` | `error`, `warn`, `info` or `debug` |
 | `SESSION_SECRET` | generated | Signs sign-in sessions; keep it secret |
 | `MASTER_USERNAME` / `MASTER_PASSWORD` | empty | Emergency superadmin login (see below) |
+| `DEMO_MODE` | `false` | `true` turns on [demo mode](#demo-mode-portfolio--cpanel). Never in real use |
+| `DEMO_USERNAME` / `DEMO_PASSWORD` | `demo` / `demo1234` | The read-only demo account |
 
 Restart the bridge after editing `.env` by hand.
 
@@ -372,6 +375,70 @@ Everything is stored next to the app:
 3. Replace the program files, keeping `.env` and `data/`. With git: `git pull`.
 4. Run `npm install`.
 5. Start the bridge again.
+
+---
+
+## Demo mode (portfolio / cPanel)
+
+Demo mode shows the bridge to visitors without real devices — for a portfolio or a sales demo,
+including on shared hosting with cPanel. Turn it on with `DEMO_MODE=true`. It then:
+
+- adds a demo company: 12 employees, 3 devices and a week of punches. Today's punches appear as
+  their time passes, so the dashboard always shows "today";
+- creates a **read-only account** (`demo` / `demo1234` by default) once the setup wizard has made
+  your own admin account, and shows it on the sign-in page with a **Use demo account** button.
+  The demo account can open every page, but the server refuses every change it tries to make;
+- does not start the ADMS listener (no devices, and shared hosting allows only the web port).
+
+> **Not for real use.** For real devices, run the bridge on an office PC or a VPS, as described above.
+> Shared hosting cannot open the ADMS port or reach devices in your office network.
+
+### Trying it on your own computer
+
+Use a **separate copy**: demo employees and punches are saved in `data/`, and they stay there after
+you turn demo mode off. A different `PORT` lets the demo run next to a real installation.
+
+```bash
+mkdir ~/attendbridge-demo
+tar --exclude=node_modules --exclude=data --exclude=.env --exclude=logs -cf - . | tar -xf - -C ~/attendbridge-demo
+cd ~/attendbridge-demo
+npm install
+sed -i 's/^DEMO_MODE=.*/DEMO_MODE=true/; s/^PORT=.*/PORT=3001/' .env    # or edit .env by hand
+npm start
+```
+
+Open <http://localhost:3001>, create your admin account in the setup wizard (skip the ERP step), and
+sign out. The sign-in page then shows the demo account.
+
+### Installing on cPanel
+
+Your hosting needs **Setup Node.js App** in cPanel, with Node.js **20 or newer**.
+
+1. Make the ZIP of the app without `node_modules`. Upload it with **File Manager** into a new folder
+   (for example `attendbridge`) and extract it.
+2. In **cPanel → Setup Node.js App → Create Application**:
+   - **Node.js version:** 20 or newer.
+   - **Application mode:** Production.
+   - **Application root:** `attendbridge`.
+   - **Application URL:** for example `demo.yoursite.com`.
+   - **Application startup file:** `src/server.js`.
+3. Under **Environment variables**, add:
+   - `DEMO_MODE` = `true`
+   - `TZ` = your time zone (for example `Asia/Dhaka`), so "today" matches your visitors
+   - optionally `DEMO_USERNAME` and `DEMO_PASSWORD`
+4. Click **Run NPM Install**, then **Start App** (or **Restart**).
+5. Open the URL. The setup wizard appears: create **your own admin account** and skip the ERP step.
+   Any ADMS port is fine; it is not used in demo mode.
+6. Sign out. The sign-in page now shows the demo account for visitors.
+
+Notes:
+
+- cPanel stops idle apps, so the first visit after a quiet period can take a few seconds.
+- Restart the app with cPanel's **Restart** button.
+- If you change `DEMO_USERNAME` later, delete the old demo user in **Users & Roles**.
+
+If your hosting has no **Setup Node.js App**, use a Node.js host such as Render, Railway or Fly.io
+with the same environment variables.
 
 ---
 
@@ -421,6 +488,7 @@ attendbridge/
 │   ├── scheduler.js         Employee sync and attendance push schedules
 │   ├── analytics.js         Dashboard numbers and charts
 │   ├── branding.js          White-label settings
+│   ├── demo.js              Demo mode (DEMO_MODE=true)
 │   ├── adms/server.js       ADMS push server (iclock protocol)
 │   ├── tcpip/zkclient.js    ZKTeco TCP protocol client (port 4370)
 │   ├── tcpip/connector.js   TCP/IP devices: sessions, fetch, user writes

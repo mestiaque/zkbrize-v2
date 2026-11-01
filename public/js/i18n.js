@@ -478,6 +478,12 @@
     'Enter a valid http(s) URL': 'সঠিক http(s) URL দিন',
     'Sync queued — device will update on next heartbeat': 'সিঙ্ক সারিতে রাখা হয়েছে — পরের heartbeat-এ ডিভাইস আপডেট হবে',
 
+    // ── Demo mode ────────────────────────────────────────────────────
+    'Demo account': 'ডেমো অ্যাকাউন্ট',
+    'Use demo account': 'ডেমো অ্যাকাউন্ট দিয়ে ঢুকুন',
+    'Demo — read-only': 'ডেমো — শুধু দেখার জন্য',
+    'The demo account is read-only': 'ডেমো অ্যাকাউন্টে কিছু বদলানো যায় না',
+
     // ── Sign in ──────────────────────────────────────────────────────
     'Sign in': 'সাইন ইন',
     'Sign In': 'সাইন ইন',

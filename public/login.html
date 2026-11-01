@@ -63,6 +63,10 @@
   button:disabled { opacity: .6; cursor: not-allowed; }
   .credit { text-align: center; font-size: 11px; color: #aaa; margin-top: 18px; }
   .credit a { color: inherit; }
+  .demo { display: none; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; }
+  .demo-title { font-weight: 600; margin-bottom: 4px; }
+  .demo-creds { font-family: ui-monospace, Consolas, monospace; }
+  .demo button { width: auto; margin-top: 8px; padding: 6px 12px; font-size: 12px; }
   .error {
     background: #fff1f0; border: 1px solid #ffa39e;
     color: #cf1322; border-radius: 8px;
@@ -84,6 +88,11 @@
   </div>
   <h2>Sign in</h2>
   <p class="sub">Enter your credentials to continue</p>
+  <div class="demo" id="demo-box">
+    <div class="demo-title">Demo account</div>
+    <div class="demo-creds" data-no-i18n><span id="demo-user"></span> / <span id="demo-pass"></span></div>
+    <button type="button" onclick="useDemo()">Use demo account</button>
+  </div>
   <div class="error" id="err"></div>
   <form onsubmit="doLogin(event)">
     <label>Username</label>
@@ -95,6 +104,20 @@
   <div class="credit" id="dev-credit"></div>
 </div>
 <script>
+// Demo mode: show the read-only demo account
+fetch('/api/demo').then(r => r.json()).then(d => {
+  if (!d.enabled) return;
+  document.getElementById('demo-user').textContent = d.username;
+  document.getElementById('demo-pass').textContent = d.password;
+  document.getElementById('demo-box').style.display = 'block';
+}).catch(() => {});
+
+function useDemo() {
+  document.getElementById('username').value = document.getElementById('demo-user').textContent;
+  document.getElementById('password').value = document.getElementById('demo-pass').textContent;
+  document.querySelector('form').requestSubmit();
+}
+
 async function doLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('btn');

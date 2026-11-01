@@ -1142,7 +1142,7 @@ async function api(path, body, method) {
     const res = await fetch('/api' + path, opts);
     if (res.status === 401) { window.location.href = '/login'; return null; }
     const data = await res.json();
-    if (res.status === 403) toast('You do not have permission for this action', 'error');
+    if (res.status === 403) toast(data?.error && data.error !== 'Forbidden' ? data.error : 'You do not have permission for this action', 'error');
     return data;
   } catch (e) { console.error(e); return null; }
 }
@@ -1254,6 +1254,14 @@ async function loadCurrentUser() {
     const user = await res.json();
     const info = document.getElementById('sidebar-user-info');
     if (info) info.textContent = user.username + ' (' + user.role + ')';
+    // Demo mode: mark the public demo account as read-only in the top bar
+    fetch('/api/demo').then(r => r.json()).then(d => {
+      if (!d.enabled || d.username.toLowerCase() !== String(user.username).toLowerCase()) return;
+      const tag = document.createElement('span');
+      tag.className = 'tag tag-amber';
+      tag.textContent = 'Demo — read-only';
+      document.querySelector('.topbar-actions').prepend(tag);
+    }).catch(() => {});
     if (user.canAdminister) document.getElementById('nav-admin-group').style.display = '';
     if (user.role === 'superadmin') {
       document.getElementById('card-branding').style.display = '';

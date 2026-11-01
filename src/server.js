@@ -20,6 +20,7 @@ const { onShutdown, closeAll } = require('./restart');
 const { startADMSServer, stopADMSServer, setSocketIO: admsSetIO } = require('./adms/server');
 const { setSocketIO: tcpSetIO, disconnectAllTCP, restoreTCPDevices } = require('./tcpip/connector');
 const { startScheduler, setSocketIO: schedSetIO } = require('./scheduler');
+const demo = require('./demo');
 
 // Settings: data/config.json first, then .env on top (.env is the source of truth;
 // the Settings page writes both)
@@ -108,6 +109,7 @@ app.get('/favicon.ico', sendLogo);
 app.get('/api/branding', (req, res) => res.json(branding.publicBranding()));
 app.get('/js/branding.js', (req, res) => res.sendFile(path.join(publicDir, 'js/branding.js')));
 app.get('/js/i18n.js', (req, res) => res.sendFile(path.join(publicDir, 'js/i18n.js')));
+app.get('/api/demo', (req, res) => res.json(demo.publicInfo()));
 
 // ── First-run install wizard ──────────────────────────────────────
 app.use('/api/install', installRouter);
@@ -130,6 +132,14 @@ app.use('/api/auth', authRoutes);
 // ── Everything below requires login ───────────────────────────────
 app.use(requireAuth);
 
+// Demo mode: the public demo account may look at everything but change nothing
+app.use((req, res, next) => {
+  if (demo.isReadOnly(req) && req.method !== 'GET' && req.originalUrl.startsWith('/api/')) {
+    return res.status(403).json({ success: false, error: 'The demo account is read-only' });
+  }
+  next();
+});
+
 app.use(express.static(publicDir, { index: 'index.html' }));
 app.use('/api', routes);
 
@@ -144,9 +154,14 @@ io.on('connection', (socket) => {
 });
 
 // ── Start services ─────────────────────────────────────────────────
-startADMSServer(store.config.admsPort);
-logger.info(`ADMS server started on port ${store.config.admsPort}`);
+// Demo mode has no devices and often runs where only the web port may listen
+// (shared hosting runs the first server that listens as the web app)
+if (!demo.enabled) {
+  startADMSServer(store.config.admsPort);
+  logger.info(`ADMS server started on port ${store.config.admsPort}`);
+}
 startScheduler();
+demo.start();
 restoreTCPDevices().catch(e => logger.error('TCP device restore failed: ' + e.message));
 
 const G = '\x1b[32m', R = '\x1b[0m';
@@ -157,7 +172,7 @@ function printBanner() {
     '',
     `  ${appName} is running`,
     `  Open:       ${url}${isInstalled() ? '' : '   (first run — complete the setup wizard)'}`,
-    `  ADMS port:  ${store.config.admsPort}`,
+    demo.enabled ? '  Demo mode:  on (read-only demo account, no ADMS listener)' : `  ADMS port:  ${store.config.admsPort}`,
     '  Developed by M. Estiaque — https://mestiaque.com',
     '',
   ];
@@ -177,7 +192,7 @@ const PID_FILE = path.join(__dirname, '../logs/server.pid');
 server.listen(PORT, HOST, () => {
   try { fs.writeFileSync(PID_FILE, String(process.pid)); } catch {}
   logger.info(`Bridge running at http://localhost:${PORT}`);
-  logger.info(`ADMS listener on port ${store.config.admsPort}`);
+  if (!demo.enabled) logger.info(`ADMS listener on port ${store.config.admsPort}`);
   printBanner();
 });
 

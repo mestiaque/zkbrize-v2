@@ -3,12 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('./logger');
 
-// Under a process manager (PM2, or our Windows service / systemd unit, which set
-// ATTENDBRIDGE_SERVICE) exiting is enough — the manager starts us again. Otherwise we spawn
+// Under a process manager (PM2, Passenger on cPanel, or our Windows service / systemd
+// unit, which set ATTENDBRIDGE_SERVICE) exiting is enough — the manager starts us again. Otherwise we spawn
 // a detached copy first. (INVOCATION_ID is not used: it leaks into every process
 // started from any systemd unit, including desktop terminals.)
 function isManaged() {
-  return !!(process.env.pm_id || process.env.ATTENDBRIDGE_SERVICE);
+  return !!(process.env.pm_id || process.env.ATTENDBRIDGE_SERVICE || process.env.PASSENGER_APP_ENV);
 }
 
 let shutdownHooks = [];
