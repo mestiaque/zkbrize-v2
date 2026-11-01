@@ -107,6 +107,7 @@ app.get('/brand/logo', sendLogo);
 app.get('/favicon.ico', sendLogo);
 app.get('/api/branding', (req, res) => res.json(branding.publicBranding()));
 app.get('/js/branding.js', (req, res) => res.sendFile(path.join(publicDir, 'js/branding.js')));
+app.get('/js/i18n.js', (req, res) => res.sendFile(path.join(publicDir, 'js/i18n.js')));
 
 // ── First-run install wizard ──────────────────────────────────────
 app.use('/api/install', installRouter);

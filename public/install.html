@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Setup</title>
 <link rel="icon" href="/brand/logo">
+<script src="/js/i18n.js"></script>
 <script src="/js/branding.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,6 +56,7 @@
 </style>
 </head>
 <body>
+<div class="lang-switch" style="position:fixed;top:16px;right:16px"></div>
 <div class="card">
   <div class="head">
     <img data-brand-logo alt="">
@@ -103,7 +105,7 @@
       <div class="field">
         <label for="e-url">ERP API Base URL</label>
         <input id="e-url" type="url" placeholder="https://erp.example.com/api">
-        <div class="hint">The bridge calls <code>/zk/ping</code>, <code>/zk/employees</code> and <code>/zk/attendance</code> under this URL.</div>
+        <div class="hint" data-i18n="install-erp-hint">The bridge calls <code>/zk/ping</code>, <code>/zk/employees</code> and <code>/zk/attendance</code> under this URL.</div>
       </div>
       <div class="field">
         <label for="e-token">API Token (Bearer) <span class="opt">— optional</span></label>
@@ -134,12 +136,12 @@
     <!-- 5. Done -->
     <section class="step" data-step="5">
       <h2>All set 🎉</h2>
-      <p class="lead">Setup is complete and you are signed in. To connect an ADMS device, open <b>Menu → COMM → Cloud Server Setting</b> on the device and enter:</p>
+      <p class="lead" data-i18n="install-done">Setup is complete and you are signed in. To connect an ADMS device, open <b>Menu → COMM → Cloud Server Setting</b> on the device and enter:</p>
       <dl class="box">
         <dt>Server Address</dt><dd id="done-ip"></dd>
         <dt>Server Port</dt><dd id="done-port"></dd>
       </dl>
-      <p class="lead">Older devices without ADMS can be added by IP on the <b>Devices</b> page.</p>
+      <p class="lead" data-i18n="install-done-tcp">Older devices without ADMS can be added by IP on the <b>Devices</b> page.</p>
     </section>
   </div>
 

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
 <link rel="icon" href="/brand/logo">
+<script src="/js/i18n.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <link rel="stylesheet" href="css/style.css">
 <script src="/js/branding.js"></script>
@@ -99,7 +100,12 @@
     <!-- Top Bar -->
     <div class="topbar">
       <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-clock" data-no-i18n>
+        <span class="clock-time" id="clock-time"></span>
+        <span class="clock-date" id="clock-date"></span>
+      </div>
       <div class="topbar-actions">
+        <div class="lang-switch"></div>
         <div class="conn-status" id="socket-status">
           <span class="status-dot offline"></span> Connecting...
         </div>
@@ -112,18 +118,6 @@
 
     <!-- Pages -->
     <div id="page-dashboard" class="page active">
-
-      <!-- Welcome banner -->
-      <div class="dash-welcome">
-        <div>
-          <div class="dash-greeting" id="dash-greeting">Good morning</div>
-          <div class="dash-date" id="dash-date"></div>
-        </div>
-        <div class="dash-brand-badge">
-          <img data-brand-logo alt="" style="width:28px;height:28px;border-radius:6px;object-fit:contain">
-          <span data-brand="appName"></span>
-        </div>
-      </div>
 
       <!-- Today's attendance -->
       <div class="stats-grid">
@@ -334,7 +328,7 @@
               <span class="badge-green">Listening</span>
             </div>
           </div>
-          <p class="hint mt">On your ZKTeco device: go to <strong>Comm → ADMS</strong> and set the server address above. Devices will push attendance in real-time.</p>
+          <p class="hint mt" data-i18n="adms-hint">On your ZKTeco device: go to <strong>Comm → ADMS</strong> and set the server address above. Devices will push attendance in real-time.</p>
         </div>
       </div>
 
@@ -416,7 +410,7 @@
 
       <div class="card mt" id="card-export-guide">
         <div class="card-header"><div class="card-title">Export Guide</div></div>
-        <div style="padding:12px 16px;font-size:13px;line-height:1.8;color:var(--text-secondary)">
+        <div style="padding:12px 16px;font-size:13px;line-height:1.8;color:var(--text-secondary)" data-i18n="export-guide">
           <strong>Export CSV</strong> → import into ZKBio Security / ZKTime.Net software<br>
           <strong>Export DAT (USB)</strong> → save <code>user.dat</code> to a USB drive and import it on the ZKTeco device<br>
           <em>On the device: Menu → USB Manager → Upload → User Info</em>
@@ -427,7 +421,7 @@
         <div class="card-header">
           <div class="card-title">ERP API Endpoints Required</div>
         </div>
-        <div class="code-block">
+        <div class="code-block" data-no-i18n>
 <pre>// routes/api.php
 Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
     Route::get('/ping',       [ZKController::class, 'ping']);
@@ -789,65 +783,197 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
       <div id="iperm-editor"></div>
     </div>
 
-    <!-- Guide Page -->
+    <!-- Guide Page: one block per language (data-lang), both kept in step -->
     <div id="page-guide" class="page">
       <div class="section-header">
-        <div><h2>User Guide</h2><p class="sub">Connect devices, link your ERP and fix common problems</p></div>
+        <div>
+          <h2 data-lang="en">User Guide</h2>
+          <h2 data-lang="bn">ব্যবহার নির্দেশিকা</h2>
+          <p class="sub" data-lang="en">Everything the bridge does, step by step: setup, devices, employees, attendance, ERP and fixes</p>
+          <p class="sub" data-lang="bn">ব্রিজের সব কাজ ধাপে ধাপে: সেটআপ, ডিভাইস, কর্মী, হাজিরা, ERP এবং সমস্যার সমাধান</p>
+        </div>
       </div>
 
-      <div class="guide-layout">
+      <!-- ═══════════════════════════ ENGLISH ═══════════════════════════ -->
+      <div class="guide-layout" data-lang="en">
         <div class="guide-toc">
           <div class="guide-toc-title">Contents</div>
-          <a class="guide-toc-item" href="#g-quickstart" onclick="return guideJump(this)">Quick Start</a>
-          <a class="guide-toc-item" href="#g-adms" onclick="return guideJump(this)">ADMS Devices</a>
-          <a class="guide-toc-item" href="#g-tcp" onclick="return guideJump(this)">TCP/IP Devices</a>
-          <a class="guide-toc-item" href="#g-erp" onclick="return guideJump(this)">ERP API</a>
-          <a class="guide-toc-item" href="#g-sync" onclick="return guideJump(this)">Daily Use</a>
-          <a class="guide-toc-item" href="#g-trouble" onclick="return guideJump(this)">Troubleshooting</a>
+          <div class="guide-toc-group">Start</div>
+          <a class="guide-toc-item" href="#ge-start" onclick="return guideJump(this)">1. Getting Started</a>
+          <a class="guide-toc-item" href="#ge-dashboard" onclick="return guideJump(this)">2. Dashboard</a>
+          <div class="guide-toc-group">Devices</div>
+          <a class="guide-toc-item" href="#ge-adms" onclick="return guideJump(this)">3. ADMS Devices</a>
+          <a class="guide-toc-item" href="#ge-tcp" onclick="return guideJump(this)">4. TCP/IP Devices</a>
+          <div class="guide-toc-group">Daily work</div>
+          <a class="guide-toc-item" href="#ge-employees" onclick="return guideJump(this)">5. Employees</a>
+          <a class="guide-toc-item" href="#ge-attendance" onclick="return guideJump(this)">6. Attendance</a>
+          <a class="guide-toc-item" href="#ge-sync" onclick="return guideJump(this)">7. Sync &amp; Schedules</a>
+          <div class="guide-toc-group">Configuration</div>
+          <a class="guide-toc-item" href="#ge-settings" onclick="return guideJump(this)">8. Settings</a>
+          <a class="guide-toc-item" href="#ge-users" onclick="return guideJump(this)">9. Users &amp; Permissions</a>
+          <a class="guide-toc-item" href="#ge-erp" onclick="return guideJump(this)">10. ERP API</a>
+          <div class="guide-toc-group">Maintenance</div>
+          <a class="guide-toc-item" href="#ge-data" onclick="return guideJump(this)">11. Logs, Data &amp; Backup</a>
+          <a class="guide-toc-item" href="#ge-trouble" onclick="return guideJump(this)">12. Troubleshooting</a>
         </div>
 
         <div class="guide-content">
 
-          <div class="guide-section" id="g-quickstart">
-            <div class="guide-section-title"><span class="guide-num">1</span> Quick Start</div>
+          <div class="guide-section" id="ge-start">
+            <div class="guide-section-title"><span class="guide-num">1</span> Getting Started</div>
+            <p>The bridge sits between your ZKTeco attendance devices and your ERP / HRM / payroll system. It sends employees to the devices, collects every punch, and pushes the punches to the ERP.</p>
+            <h4>First run</h4>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-num">1</div><div>Open <strong>Settings</strong>, enter your <strong>ERP API Base URL</strong> and token, and click <strong>Test Connection</strong>.</div></div>
-              <div class="guide-step"><div class="guide-step-num">2</div><div>On each ADMS device, set the server to <code class="guide-ip"></code> port <code class="guide-port"></code> (see below). Older devices: add them on the <strong>Devices</strong> page.</div></div>
-              <div class="guide-step"><div class="guide-step-num">3</div><div>On <strong>Employees</strong>, click <strong>Load from ERP</strong>, then <strong>Set to Device</strong>.</div></div>
-              <div class="guide-step"><div class="guide-step-num">4</div><div>Punches appear on <strong>Attendance</strong> in real time. Turn on <strong>Attendance Push</strong> in Settings to send them to the ERP automatically.</div></div>
+              <div class="guide-step"><div class="guide-step-num">1</div><div>Open the bridge in a browser. On a new installation the <strong>Setup wizard</strong> opens: it checks the computer, creates the administrator account, optionally connects the ERP, and sets the app name and the ADMS port.</div></div>
+              <div class="guide-step"><div class="guide-step-num">2</div><div>Sign in. Choose the interface language with the <strong>EN | বাং</strong> switch in the top bar (also on the sign-in page). The choice is remembered on this browser.</div></div>
             </div>
+            <h4>Five steps to a working bridge</h4>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-num">1</div><div><strong>Settings → ERP API Configuration</strong>: enter the ERP API Base URL and token, click <strong>Test Connection</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">2</div><div>Connect devices: ADMS devices point to <code class="guide-ip"></code> port <code class="guide-port"></code> (section 3); older devices are added by IP on <strong>Devices</strong> (section 4).</div></div>
+              <div class="guide-step"><div class="guide-step-num">3</div><div><strong>Employees → Load from ERP</strong>, then <strong>Set to Device</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">4</div><div>Punches appear on <strong>Attendance</strong> as they happen.</div></div>
+              <div class="guide-step"><div class="guide-step-num">5</div><div>Turn on <strong>Attendance Push</strong> in Settings so new punches go to the ERP automatically.</div></div>
+            </div>
+            <div class="guide-alert guide-alert-info">The top bar shows the live date and time, the server connection (<strong>Live</strong> / <strong>Disconnected</strong>) and the <strong>Sync Now</strong> button.</div>
           </div>
 
-          <div class="guide-section" id="g-adms">
-            <div class="guide-section-title"><span class="guide-num">2</span> ADMS (push) Devices</div>
-            <p class="guide-sub">On the device: Menu → COMM → Cloud Server Setting (older models: Comm → ADMS)</p>
+          <div class="guide-section" id="ge-dashboard">
+            <div class="guide-section-title"><span class="guide-num">2</span> Dashboard</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>Present / Late / Absent today</strong></td><td>Counted from each employee's first punch today. Late = after the start time plus grace period (Settings → Attendance Rules). Absent needs employees in the bridge.</td></tr>
+                <tr><td><strong>Waiting for ERP</strong></td><td>Punches not yet accepted by the ERP.</td></tr>
+                <tr><td><strong>Last 7 days</strong></td><td>On-time and late employees per day.</td></tr>
+                <tr><td><strong>Late arrivals today</strong></td><td>Who was late and by how many minutes.</td></tr>
+                <tr><td><strong>Arrivals by hour</strong>, <strong>Verification method</strong>, <strong>Punches by device</strong></td><td>When people arrive, how they verify (finger, face, card, password) and which device is used.</td></tr>
+                <tr><td><strong>Connected Devices</strong>, <strong>Recent Activity</strong>, <strong>Sync History</strong></td><td>Device status, the latest punches and the latest sync results.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="ge-adms">
+            <div class="guide-section-title"><span class="guide-num">3</span> ADMS (push) Devices</div>
+            <p>Newer ZKTeco devices (ADMS / Cloud Server / iClock) send punches to the bridge by themselves, in real time. On the device open <strong>Menu → COMM → Cloud Server Setting</strong> (older models: <strong>Comm → ADMS</strong>):</p>
             <table class="guide-table">
               <thead><tr><th>Field</th><th>Value</th><th>Note</th></tr></thead>
               <tbody>
                 <tr><td>Server Mode</td><td><code>ADMS</code></td><td>If the device offers it</td></tr>
                 <tr><td>Enable Domain Name</td><td><code>OFF</code></td><td>Use the IP address</td></tr>
                 <tr><td>Server Address</td><td><code class="guide-ip"></code></td><td>This computer's LAN IP</td></tr>
-                <tr><td>Server Port</td><td><code class="guide-port"></code></td><td>ADMS port (Settings → ADMS Server Info)</td></tr>
+                <tr><td>Server Port</td><td><code class="guide-port"></code></td><td>Settings → ADMS Server Info</td></tr>
                 <tr><td>HTTPS / Proxy</td><td><code>OFF</code></td><td></td></tr>
               </tbody>
             </table>
-            <div class="guide-alert guide-alert-warn" style="margin-top:12px">
-              Never enter <code>localhost</code> or <code>127.0.0.1</code> on a device. Give this computer a fixed IP and allow port <code class="guide-port"></code> in its firewall.
-            </div>
+            <p style="margin-top:12px">Save and restart the device. Within a minute it appears on <strong>Devices</strong> and the Logs show <code>ADMS handshake</code>. Name and employee changes reach ADMS devices on their next check-in (about 30 seconds). Use <strong>Attendance → Fetch ADMS</strong> to ask the device for punches it stored before it was connected.</p>
+            <div class="guide-alert guide-alert-warn">Never enter <code>localhost</code> or <code>127.0.0.1</code> on a device. Give this computer a fixed IP and allow port <code class="guide-port"></code> in its firewall.</div>
           </div>
 
-          <div class="guide-section" id="g-tcp">
-            <div class="guide-section-title"><span class="guide-num">3</span> TCP/IP (pull) Devices</div>
+          <div class="guide-section" id="ge-tcp">
+            <div class="guide-section-title"><span class="guide-num">4</span> TCP/IP (pull) Devices</div>
+            <p>Older devices without ADMS are read by the bridge over the network (port <code>4370</code>). Each read opens a short session: connect, pause the device, read, resume, disconnect.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-num">1</div><div>Give the device a fixed IP (Menu → COMM → Ethernet). Default TCP port is <code>4370</code>.</div></div>
-              <div class="guide-step"><div class="guide-step-num">2</div><div>On <strong>Devices</strong>, use <strong>Network Ping Test</strong>, then <strong>Add TCP/IP Device</strong>. Enter the device's Comm Key (Menu → COMM → PC Connection) if it has one.</div></div>
-              <div class="guide-step"><div class="guide-step-num">3</div><div>Punches are read automatically with every <strong>Attendance Push</strong>, or right away with <strong>Attendance → Fetch TCP</strong> or <strong>Sync Now</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">1</div><div>Give the device a <strong>fixed IP</strong> (Menu → COMM → Ethernet, DHCP off) or reserve its IP in the router.</div></div>
+              <div class="guide-step"><div class="guide-step-num">2</div><div>On <strong>Devices</strong>, check it with <strong>Network Ping Test</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">3</div><div><strong>Add TCP/IP Device</strong>: IP, port <code>4370</code>, a name, and the <strong>Comm Key</strong> if the device has one (Menu → COMM → PC Connection → Comm Key). Click <strong>Connect Device</strong>.</div></div>
+              <div class="guide-step"><div class="guide-step-num">4</div><div>Punches are read with every scheduled <strong>Attendance Push</strong>, with <strong>Sync Now</strong>, with <strong>Attendance → Fetch TCP</strong>, or with the device's <strong>Fetch</strong> button.</div></div>
+            </div>
+            <h4>Device list buttons</h4>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>Fetch</strong></td><td>Read this device's punches now.</td></tr>
+                <tr><td><strong>Sync Emp</strong></td><td>Load employees from the ERP and write them to this device.</td></tr>
+                <tr><td><strong>Edit</strong></td><td>Change IP, port, name or Comm Key. The device keeps its ID and records. Leave Comm Key empty to keep it; <code>0</code> means none.</td></tr>
+                <tr><td><strong>Disconnect</strong></td><td>Remove the device from the bridge. Its records stay.</td></tr>
+              </tbody>
+            </table>
+            <div class="guide-alert guide-alert-info">
+              <strong>Good to know:</strong> devices are remembered across restarts. If a device was offline it shows <em>error</em> and is tried again on the next sync. If a device's IP changed, just add it again with the new IP: the bridge recognises it by its <strong>serial number</strong> and updates the old entry, so no punch is sent to the ERP twice. Without a date range, a fetch takes the last <em>retention period</em> (90 days by default); use From / To on Attendance to fetch older punches.
             </div>
           </div>
 
-          <div class="guide-section" id="g-erp">
-            <div class="guide-section-title"><span class="guide-num">4</span> ERP API</div>
-            <p style="font-size:13px;color:var(--text-2);margin-bottom:10px">Your ERP needs three endpoints under the API Base URL. With a token set, requests send <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+          <div class="guide-section" id="ge-employees">
+            <div class="guide-section-title"><span class="guide-num">5</span> Employees</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>Load from ERP</strong></td><td>Imports employees from the ERP and saves them in the bridge.</td></tr>
+                <tr><td><strong>Load from Machine</strong></td><td>Reads the users stored on a device (asks which device when several are connected).</td></tr>
+                <tr><td><strong>Set to Device</strong></td><td>Sends employees that are <em>Not Synced</em> to every connected device. ADMS devices apply them on their next check-in.</td></tr>
+                <tr><td><strong>+ Add Employee</strong> / <strong>Edit</strong> / <strong>Delete</strong></td><td>Create, change or remove one employee; the change goes to connected devices right away.</td></tr>
+                <tr><td><strong>Search &amp; filter</strong></td><td>By name, employee ID, UID, and Synced / Not Synced.</td></tr>
+                <tr><td><strong>⬇ CSV</strong></td><td>For ZKBio Security / ZKTime.Net desktop software.</td></tr>
+                <tr><td><strong>⬇ DAT</strong></td><td><code>user.dat</code> for USB import: on the device Menu → USB Manager → Upload → User Info.</td></tr>
+              </tbody>
+            </table>
+            <h4>Fields</h4>
+            <ul>
+              <li><strong>UID</strong> — the device's user slot, unique per employee.</li>
+              <li><strong>Employee ID</strong> — the ID shown on the device and sent to the ERP with each punch.</li>
+              <li><strong>Role</strong> — <em>User</em> or <em>Admin</em> (an admin can open the device menu).</li>
+              <li><strong>Password / PIN</strong> — optional, up to 8 digits.</li>
+            </ul>
+            <p>An employee is marked <strong>Synced</strong> only after a device accepted them; the rest are tried again on the next sync.</p>
+          </div>
+
+          <div class="guide-section" id="ge-attendance">
+            <div class="guide-section-title"><span class="guide-num">6</span> Attendance</div>
+            <p>Every punch from every device, newest first. <em>New</em> = not yet accepted by the ERP; <em>Pushed</em> = accepted (shown faded, with the time it was sent).</p>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>From / To</strong></td><td>Shows records in that date range, and limits Fetch TCP / Fetch ADMS to it.</td></tr>
+                <tr><td><strong>Fetch TCP</strong></td><td>Reads all TCP/IP devices now.</td></tr>
+                <tr><td><strong>↓ Fetch ADMS</strong></td><td>Asks ADMS devices to upload stored punches (all history, or the date range). They arrive within about 10 seconds.</td></tr>
+                <tr><td><strong>Push to ERP</strong></td><td>Sends every <em>New</em> record to the ERP now.</td></tr>
+                <tr><td><strong>Filters</strong></td><td>Employee ID, date, device, type (Check In / Out), method (face, fingerprint, card, password), source (ADMS / TCP), status (New / Pushed).</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:10px">Punch types: <code>0</code> Check-In, <code>1</code> Check-Out, <code>2</code> Break-Out, <code>3</code> Break-In, <code>4</code> OT-In, <code>5</code> OT-Out. The same punch is never stored twice.</p>
+          </div>
+
+          <div class="guide-section" id="ge-sync">
+            <div class="guide-section-title"><span class="guide-num">7</span> Sync &amp; Schedules</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>Sync Now</strong> (top bar)</td><td>Reads TCP/IP devices, then pushes all new records to the ERP.</td></tr>
+                <tr><td><strong>Employee Sync</strong></td><td>On its schedule: imports employees from the ERP and sends new ones to the devices.</td></tr>
+                <tr><td><strong>Attendance Push</strong></td><td>On its schedule: reads TCP/IP devices, then sends new records to the ERP.</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:10px">Schedules use cron format, set in <strong>Settings → Sync Schedule</strong> (or with the preset buttons). Each has an on/off switch.</p>
+            <table class="guide-table">
+              <thead><tr><th>Cron</th><th>Runs</th></tr></thead>
+              <tbody>
+                <tr><td><code>*/5 * * * *</code></td><td>Every 5 minutes</td></tr>
+                <tr><td><code>*/15 * * * *</code></td><td>Every 15 minutes</td></tr>
+                <tr><td><code>0 * * * *</code></td><td>Every hour, on the hour</td></tr>
+                <tr><td><code>0 9,18 * * *</code></td><td>At 09:00 and 18:00</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="ge-settings">
+            <div class="guide-section-title"><span class="guide-num">8</span> Settings</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>ERP API Configuration</strong></td><td>Base URL (include <code>/api</code> if your routes use it), optional Bearer token, and optional full URLs for fetching employees and pushing attendance when your ERP uses other paths. <strong>Test Connection</strong> calls <code>/zk/ping</code>.</td></tr>
+                <tr><td><strong>Sync Schedule</strong></td><td>On/off and timing for Employee Sync and Attendance Push.</td></tr>
+                <tr><td><strong>ADMS Server Info</strong></td><td>The address devices use, and <strong>Change ADMS Port</strong> (applies at once, no restart). <strong>Restart Server</strong> restarts the bridge.</td></tr>
+                <tr><td><strong>Attendance Rules</strong></td><td>Work start time and grace minutes, used for the Late count.</td></tr>
+                <tr><td><strong>Branding</strong> (superadmin)</td><td>App name, tagline, logo, primary color, company name and website in the footer.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="ge-users">
+            <div class="guide-section-title"><span class="guide-num">9</span> Users, Roles &amp; Permissions</div>
+            <p><strong>Administration → Users &amp; Roles</strong> (owner only): add users, set their role and password. Built-in roles: <code>superadmin</code> (everything), <code>admin</code>, <code>viewer</code>. Make your own roles and switch on exactly the pages and buttons each may use.</p>
+            <p><strong>Administration → Interface Permissions</strong>: turn pages and buttons off for everyone at once. A feature is available only when both this page and the user's role allow it. The server enforces the same rules, so a hidden button cannot be used through the API either.</p>
+            <div class="guide-alert guide-alert-info">Lost the admin password? Set <code>MASTER_USERNAME</code> and <code>MASTER_PASSWORD</code> in <code>.env</code>, restart, sign in with them and reset the password. Then clear both values again.</div>
+          </div>
+
+          <div class="guide-section" id="ge-erp">
+            <div class="guide-section-title"><span class="guide-num">10</span> ERP API</div>
+            <p>Your ERP needs three JSON endpoints under the API Base URL. With a token set, every request carries <code>Authorization: Bearer &lt;token&gt;</code>.</p>
             <table class="guide-table">
               <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
               <tbody>
@@ -858,7 +984,7 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
             </table>
             <p class="guide-sub" style="margin-top:14px">GET /zk/employees — response</p>
             <div class="code-block"><pre>{ "data": [
-  { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0 }
+  { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0, "password": "" }
 ] }</pre></div>
             <p class="guide-sub" style="margin-top:14px">POST /zk/attendance — request body</p>
             <div class="code-block"><pre>{ "records": [
@@ -867,45 +993,302 @@ Route::middleware('auth:sanctum')->prefix('zk')->group(function() {
 ] }</pre></div>
             <table class="guide-table" style="margin-top:10px">
               <tbody>
-                <tr><td><code>uid</code></td><td>Device user slot, 1–65535, unique per employee</td></tr>
+                <tr><td><code>uid</code></td><td>Device user slot, unique per employee</td></tr>
                 <tr><td><code>employee_id</code> / <code>employeeId</code></td><td>The ID employees use on the device</td></tr>
-                <tr><td><code>status</code></td><td><code>0</code> Check-In, <code>1</code> Check-Out, <code>2</code> Break-Out, <code>3</code> Break-In, <code>4</code> OT-In, <code>5</code> OT-Out</td></tr>
+                <tr><td><code>privilege</code></td><td><code>0</code> user, <code>14</code> admin</td></tr>
+                <tr><td><code>status</code></td><td>Punch type, see section 6</td></tr>
                 <tr><td><code>time</code></td><td>Device local time, <code>YYYY-MM-DD HH:MM:SS</code></td></tr>
+                <tr><td><code>source</code></td><td><code>adms</code> or <code>tcp</code></td></tr>
               </tbody>
             </table>
-            <div class="guide-alert guide-alert-info" style="margin-top:12px">
-              Reply with any 2xx status (optionally <code>{ "saved": 12 }</code>). Otherwise the records stay <em>New</em> and are sent again next time — so ignore duplicates on <code>employeeId + time + deviceId</code>. Different paths? Enter full URLs in Settings → Fetch Employee URL / Sync Attendance URL.
-            </div>
+            <div class="guide-alert guide-alert-info">Reply with any 2xx status (optionally <code>{ "saved": 12 }</code>). Otherwise the records stay <em>New</em> and are sent again next time — so treat <code>employeeId + time + deviceId</code> as unique and ignore duplicates.</div>
           </div>
 
-          <div class="guide-section" id="g-sync">
-            <div class="guide-section-title"><span class="guide-num">5</span> Daily Use</div>
+          <div class="guide-section" id="ge-data">
+            <div class="guide-section-title"><span class="guide-num">11</span> Logs, Data &amp; Backup</div>
+            <p><strong>Logs</strong> shows the server's activity: device handshakes, fetches, pushes and errors. <strong>Clear Logs</strong> empties the log and the sync history.</p>
+            <p>Everything is stored in the <code>data/</code> folder next to the app:</p>
             <table class="guide-table">
               <tbody>
-                <tr><td><strong>Sync Now</strong></td><td>Fetches from TCP/IP devices and pushes all new records to the ERP.</td></tr>
-                <tr><td><strong>Employee Sync</strong></td><td>Settings → schedule: imports employees from the ERP and sends new ones to devices.</td></tr>
-                <tr><td><strong>Attendance Push</strong></td><td>Settings → schedule: reads TCP/IP devices, then sends new records to the ERP.</td></tr>
-                <tr><td><strong>Fetch ADMS</strong></td><td>Asks ADMS devices to upload punches stored before they were connected.</td></tr>
-                <tr><td><strong>CSV / DAT</strong></td><td>Employee export for ZKTeco software or USB import.</td></tr>
+                <tr><td><code>attendance.json</code></td><td>Punches (kept for the retention period; records not yet sent to the ERP are always kept)</td></tr>
+                <tr><td><code>employees.json</code></td><td>Employees</td></tr>
+                <tr><td><code>tcp-devices.json</code></td><td>TCP/IP devices and their Comm Keys</td></tr>
+                <tr><td><code>users.json</code>, <code>roles.json</code>, <code>permissions.json</code></td><td>Sign-in accounts and permissions</td></tr>
+                <tr><td><code>config.json</code>, <code>branding.json</code></td><td>Schedules, rules and branding (ERP URL/token and ports are in <code>.env</code>)</td></tr>
               </tbody>
             </table>
+            <div class="guide-alert guide-alert-warn">To back up, copy the <code>data/</code> folder and the <code>.env</code> file. When updating the app, keep both — never overwrite them with a fresh copy.</div>
           </div>
 
-          <div class="guide-section" id="g-trouble">
-            <div class="guide-section-title"><span class="guide-num">6</span> Troubleshooting</div>
+          <div class="guide-section" id="ge-trouble">
+            <div class="guide-section-title"><span class="guide-num">12</span> Troubleshooting</div>
             <table class="guide-table">
-              <thead><tr><th>Problem</th><th>Check</th></tr></thead>
+              <thead><tr><th>Problem</th><th>What to check</th></tr></thead>
               <tbody>
-                <tr><td>Device not on the Devices page</td><td>Server address/port on the device, firewall, and that device and computer are on the same network (Ping Test). Restart the device and watch <strong>Logs</strong> for <code>ADMS handshake</code>.</td></tr>
+                <tr><td>ADMS device does not appear</td><td>Server address and port on the device, the firewall, same network (Ping Test). Restart the device and watch <strong>Logs</strong> for <code>ADMS handshake</code>.</td></tr>
+                <tr><td>TCP: "Connection refused"</td><td>Wrong port, or TCP communication is off on the device. Default port is <code>4370</code>.</td></tr>
+                <tr><td>TCP: "timed out" / "unreachable"</td><td>Wrong IP, device off, or another network. Run the Ping Test.</td></tr>
+                <tr><td>TCP: "rejected the comm key"</td><td>Enter the device's Comm Key (Menu → COMM → PC Connection), or <code>0</code> if it has none.</td></tr>
+                <tr><td>Device IP changed</td><td>Add it again with the new IP (matched by serial number), or use <strong>Edit</strong>.</td></tr>
                 <tr><td>Test Connection fails</td><td><code>401/403</code>: wrong token. <code>404</code>: wrong base URL (include <code>/api</code> if your routes use it).</td></tr>
-                <tr><td>Records stay “New”</td><td>Turn on Attendance Push, click <strong>Push to ERP</strong> and read the message and Logs.</td></tr>
-                <tr><td>Name not updated on device</td><td>ADMS devices apply changes on their next check-in (about 30 seconds).</td></tr>
+                <tr><td>Records stay "New"</td><td>Turn on Attendance Push, click <strong>Push to ERP</strong> and read the message and Logs.</td></tr>
+                <tr><td>Older punches are missing</td><td>Set From / To on Attendance, then Fetch TCP or Fetch ADMS.</td></tr>
+                <tr><td>Employee not on the device</td><td>Check the employee shows <em>Not Synced</em>, click <strong>Set to Device</strong>, and wait 30 seconds for ADMS devices.</td></tr>
+                <tr><td>Web page does not open from another PC</td><td>Allow the web port (default <code>3000</code>) in the firewall; <code>HOST</code> in <code>.env</code> must be <code>0.0.0.0</code>.</td></tr>
               </tbody>
             </table>
           </div>
 
         </div><!-- /guide-content -->
-      </div><!-- /guide-layout -->
+      </div><!-- /guide-layout en -->
+
+      <!-- ═══════════════════════════ বাংলা ═══════════════════════════ -->
+      <div class="guide-layout" data-lang="bn">
+        <div class="guide-toc">
+          <div class="guide-toc-title">সূচিপত্র</div>
+          <div class="guide-toc-group">শুরু</div>
+          <a class="guide-toc-item" href="#gb-start" onclick="return guideJump(this)">১. শুরু করা</a>
+          <a class="guide-toc-item" href="#gb-dashboard" onclick="return guideJump(this)">২. ড্যাশবোর্ড</a>
+          <div class="guide-toc-group">ডিভাইস</div>
+          <a class="guide-toc-item" href="#gb-adms" onclick="return guideJump(this)">৩. ADMS ডিভাইস</a>
+          <a class="guide-toc-item" href="#gb-tcp" onclick="return guideJump(this)">৪. TCP/IP ডিভাইস</a>
+          <div class="guide-toc-group">প্রতিদিনের কাজ</div>
+          <a class="guide-toc-item" href="#gb-employees" onclick="return guideJump(this)">৫. কর্মী</a>
+          <a class="guide-toc-item" href="#gb-attendance" onclick="return guideJump(this)">৬. হাজিরা</a>
+          <a class="guide-toc-item" href="#gb-sync" onclick="return guideJump(this)">৭. সিঙ্ক ও সময়সূচি</a>
+          <div class="guide-toc-group">কনফিগারেশন</div>
+          <a class="guide-toc-item" href="#gb-settings" onclick="return guideJump(this)">৮. সেটিংস</a>
+          <a class="guide-toc-item" href="#gb-users" onclick="return guideJump(this)">৯. ইউজার ও অনুমতি</a>
+          <a class="guide-toc-item" href="#gb-erp" onclick="return guideJump(this)">১০. ERP API</a>
+          <div class="guide-toc-group">রক্ষণাবেক্ষণ</div>
+          <a class="guide-toc-item" href="#gb-data" onclick="return guideJump(this)">১১. লগ, ডেটা ও ব্যাকআপ</a>
+          <a class="guide-toc-item" href="#gb-trouble" onclick="return guideJump(this)">১২. সমস্যার সমাধান</a>
+        </div>
+
+        <div class="guide-content">
+
+          <div class="guide-section" id="gb-start">
+            <div class="guide-section-title"><span class="guide-num">১</span> শুরু করা</div>
+            <p>ব্রিজটি আপনার ZKTeco হাজিরা ডিভাইস আর ERP / HRM / পেরোল সিস্টেমের মাঝে কাজ করে। এটি কর্মীর তালিকা ডিভাইসে পাঠায়, প্রতিটি পাঞ্চ সংগ্রহ করে, এবং সেগুলো ERP-তে পাঠায়।</p>
+            <h4>প্রথমবার চালানো</h4>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-num">১</div><div>ব্রাউজারে ব্রিজটি খুলুন। নতুন ইনস্টলেশনে <strong>সেটআপ উইজার্ড</strong> খুলবে: এটি কম্পিউটার যাচাই করে, অ্যাডমিন অ্যাকাউন্ট তৈরি করে, চাইলে ERP যুক্ত করে, এবং অ্যাপের নাম ও ADMS পোর্ট ঠিক করে।</div></div>
+              <div class="guide-step"><div class="guide-step-num">২</div><div>সাইন ইন করুন। উপরের বারের <strong>EN | বাং</strong> বোতাম দিয়ে ভাষা বেছে নিন (সাইন ইন পেজেও আছে)। এই ব্রাউজারে আপনার পছন্দ মনে রাখা হবে।</div></div>
+            </div>
+            <h4>পাঁচ ধাপে চালু করুন</h4>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-num">১</div><div><strong>সেটিংস → ERP API কনফিগারেশন</strong>: ERP API বেস URL ও টোকেন দিয়ে <strong>সংযোগ পরীক্ষা</strong> চাপুন।</div></div>
+              <div class="guide-step"><div class="guide-step-num">২</div><div>ডিভাইস যুক্ত করুন: ADMS ডিভাইসে সার্ভার <code class="guide-ip"></code>, পোর্ট <code class="guide-port"></code> দিন (অংশ ৩); পুরোনো ডিভাইস <strong>ডিভাইস</strong> পেজ থেকে IP দিয়ে যোগ করুন (অংশ ৪)।</div></div>
+              <div class="guide-step"><div class="guide-step-num">৩</div><div><strong>কর্মী → ERP থেকে লোড</strong>, তারপর <strong>ডিভাইসে পাঠান</strong>।</div></div>
+              <div class="guide-step"><div class="guide-step-num">৪</div><div>পাঞ্চ হওয়ার সাথে সাথে <strong>হাজিরা</strong> পেজে দেখা যাবে।</div></div>
+              <div class="guide-step"><div class="guide-step-num">৫</div><div>সেটিংসে <strong>হাজিরা পাঠানো</strong> চালু করুন, যাতে নতুন পাঞ্চ নিজে থেকেই ERP-তে যায়।</div></div>
+            </div>
+            <div class="guide-alert guide-alert-info">উপরের বারে চলমান তারিখ ও সময়, সার্ভারের সাথে সংযোগ (<strong>লাইভ</strong> / <strong>সংযোগ বিচ্ছিন্ন</strong>) এবং <strong>এখনই সিঙ্ক</strong> বোতাম থাকে।</div>
+          </div>
+
+          <div class="guide-section" id="gb-dashboard">
+            <div class="guide-section-title"><span class="guide-num">২</span> ড্যাশবোর্ড</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>আজ উপস্থিত / দেরিতে / অনুপস্থিত</strong></td><td>আজ প্রত্যেক কর্মীর প্রথম পাঞ্চ থেকে গোনা হয়। দেরি = শুরুর সময় আর ছাড়ের সময়ের পরে (সেটিংস → হাজিরার নিয়ম)। অনুপস্থিত গুনতে ব্রিজে কর্মী থাকতে হবে।</td></tr>
+                <tr><td><strong>ERP-তে পাঠানো বাকি</strong></td><td>যে পাঞ্চ এখনো ERP গ্রহণ করেনি।</td></tr>
+                <tr><td><strong>গত ৭ দিন</strong></td><td>প্রতিদিন সময়মতো ও দেরিতে আসা কর্মী।</td></tr>
+                <tr><td><strong>আজ দেরিতে আসা</strong></td><td>কে দেরি করেছেন এবং কত মিনিট।</td></tr>
+                <tr><td><strong>ঘণ্টা অনুযায়ী আগমন</strong>, <strong>যাচাইয়ের পদ্ধতি</strong>, <strong>ডিভাইস অনুযায়ী পাঞ্চ</strong></td><td>কখন আসেন, কীভাবে যাচাই হয় (ফিঙ্গার, ফেস, কার্ড, পাসওয়ার্ড) এবং কোন ডিভাইস ব্যবহার হয়।</td></tr>
+                <tr><td><strong>সংযুক্ত ডিভাইস</strong>, <strong>সাম্প্রতিক কার্যকলাপ</strong>, <strong>সিঙ্ক ইতিহাস</strong></td><td>ডিভাইসের অবস্থা, সর্বশেষ পাঞ্চ ও সর্বশেষ সিঙ্কের ফল।</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="gb-adms">
+            <div class="guide-section-title"><span class="guide-num">৩</span> ADMS (push) ডিভাইস</div>
+            <p>নতুন ZKTeco ডিভাইস (ADMS / Cloud Server / iClock) নিজে থেকেই রিয়েল-টাইমে ব্রিজে পাঞ্চ পাঠায়। ডিভাইসে <strong>Menu → COMM → Cloud Server Setting</strong> খুলুন (পুরোনো মডেলে <strong>Comm → ADMS</strong>):</p>
+            <table class="guide-table">
+              <thead><tr><th>ঘর</th><th>মান</th><th>মন্তব্য</th></tr></thead>
+              <tbody>
+                <tr><td>Server Mode</td><td><code>ADMS</code></td><td>ডিভাইসে থাকলে</td></tr>
+                <tr><td>Enable Domain Name</td><td><code>OFF</code></td><td>IP ঠিকানা ব্যবহার করুন</td></tr>
+                <tr><td>Server Address</td><td><code class="guide-ip"></code></td><td>এই কম্পিউটারের LAN IP</td></tr>
+                <tr><td>Server Port</td><td><code class="guide-port"></code></td><td>সেটিংস → ADMS সার্ভারের তথ্য</td></tr>
+                <tr><td>HTTPS / Proxy</td><td><code>OFF</code></td><td></td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:12px">সংরক্ষণ করে ডিভাইস রিস্টার্ট দিন। এক মিনিটের মধ্যে এটি <strong>ডিভাইস</strong> পেজে আসবে এবং লগে <code>ADMS handshake</code> দেখা যাবে। নাম ও কর্মীর পরিবর্তন ADMS ডিভাইস পরের check-in-এ (প্রায় ৩০ সেকেন্ড) নেয়। সংযোগের আগে ডিভাইসে জমা পাঞ্চ আনতে <strong>হাজিরা → ADMS থেকে আনুন</strong> ব্যবহার করুন।</p>
+            <div class="guide-alert guide-alert-warn">ডিভাইসে কখনো <code>localhost</code> বা <code>127.0.0.1</code> দেবেন না। এই কম্পিউটারকে স্থায়ী IP দিন এবং ফায়ারওয়ালে <code class="guide-port"></code> পোর্ট খুলে দিন।</div>
+          </div>
+
+          <div class="guide-section" id="gb-tcp">
+            <div class="guide-section-title"><span class="guide-num">৪</span> TCP/IP (pull) ডিভাইস</div>
+            <p>ADMS নেই এমন পুরোনো ডিভাইস ব্রিজ নিজে নেটওয়ার্ক দিয়ে পড়ে (পোর্ট <code>4370</code>)। প্রতিবার পড়ার সময় একটি ছোট সেশন খোলে: সংযোগ, ডিভাইস কিছুক্ষণ থামানো, পড়া, আবার চালু, সংযোগ বন্ধ।</p>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-num">১</div><div>ডিভাইসকে <strong>স্থায়ী IP</strong> দিন (Menu → COMM → Ethernet, DHCP বন্ধ) অথবা রাউটারে IP রিজার্ভ করুন।</div></div>
+              <div class="guide-step"><div class="guide-step-num">২</div><div><strong>ডিভাইস</strong> পেজে <strong>নেটওয়ার্ক পিং টেস্ট</strong> দিয়ে যাচাই করুন।</div></div>
+              <div class="guide-step"><div class="guide-step-num">৩</div><div><strong>TCP/IP ডিভাইস যোগ করুন</strong>: IP, পোর্ট <code>4370</code>, একটি নাম, আর ডিভাইসে থাকলে <strong>Comm Key</strong> (Menu → COMM → PC Connection → Comm Key)। <strong>ডিভাইস সংযোগ করুন</strong> চাপুন।</div></div>
+              <div class="guide-step"><div class="guide-step-num">৪</div><div>প্রতিটি নির্ধারিত <strong>হাজিরা পাঠানো</strong>, <strong>এখনই সিঙ্ক</strong>, <strong>হাজিরা → TCP থেকে আনুন</strong>, অথবা ডিভাইসের <strong>আনুন</strong> বোতামে পাঞ্চ পড়া হয়।</div></div>
+            </div>
+            <h4>ডিভাইস তালিকার বোতাম</h4>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>আনুন</strong></td><td>এখনই এই ডিভাইসের পাঞ্চ পড়ুন।</td></tr>
+                <tr><td><strong>কর্মী সিঙ্ক</strong></td><td>ERP থেকে কর্মী এনে এই ডিভাইসে লিখুন।</td></tr>
+                <tr><td><strong>এডিট</strong></td><td>IP, পোর্ট, নাম বা Comm Key বদলান। ডিভাইসের ID ও রেকর্ড একই থাকে। Comm Key খালি রাখলে আগেরটা থাকে; <code>0</code> মানে নেই।</td></tr>
+                <tr><td><strong>সরিয়ে দিন</strong></td><td>ব্রিজ থেকে ডিভাইস সরান। এর রেকর্ড থেকে যায়।</td></tr>
+              </tbody>
+            </table>
+            <div class="guide-alert guide-alert-info">
+              <strong>জেনে রাখুন:</strong> রিস্টার্টের পরেও ডিভাইসগুলো মনে থাকে। ডিভাইস বন্ধ থাকলে <em>ত্রুটি</em> দেখায় এবং পরের সিঙ্কে আবার চেষ্টা হয়। ডিভাইসের IP বদলে গেলে শুধু নতুন IP দিয়ে আবার যোগ করুন: ব্রিজ <strong>সিরিয়াল নম্বর</strong> দেখে ডিভাইস চিনে পুরোনোটাই আপডেট করে, তাই কোনো পাঞ্চ ERP-তে দুবার যায় না। তারিখের সীমা না দিলে শুধু <em>রিটেনশন সময়ের</em> (ডিফল্ট ৯০ দিন) পাঞ্চ আনা হয়; আরও পুরোনো পাঞ্চ আনতে হাজিরা পেজে থেকে / পর্যন্ত দিন।
+            </div>
+          </div>
+
+          <div class="guide-section" id="gb-employees">
+            <div class="guide-section-title"><span class="guide-num">৫</span> কর্মী</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>ERP থেকে লোড</strong></td><td>ERP থেকে কর্মী এনে ব্রিজে সংরক্ষণ করে।</td></tr>
+                <tr><td><strong>মেশিন থেকে লোড</strong></td><td>ডিভাইসে থাকা ইউজার পড়ে (একাধিক ডিভাইস থাকলে কোনটি থেকে, তা জিজ্ঞেস করে)।</td></tr>
+                <tr><td><strong>ডিভাইসে পাঠান</strong></td><td><em>সিঙ্ক হয়নি</em> এমন কর্মীদের সব সংযুক্ত ডিভাইসে পাঠায়। ADMS ডিভাইস পরের check-in-এ নেয়।</td></tr>
+                <tr><td><strong>+ কর্মী যোগ করুন</strong> / <strong>এডিট</strong> / <strong>মুছুন</strong></td><td>একজন কর্মী তৈরি, পরিবর্তন বা মুছে ফেলুন; পরিবর্তন সাথে সাথে সংযুক্ত ডিভাইসে যায়।</td></tr>
+                <tr><td><strong>খোঁজা ও ফিল্টার</strong></td><td>নাম, কর্মী ID, UID এবং সিঙ্ক হয়েছে / হয়নি অনুযায়ী।</td></tr>
+                <tr><td><strong>⬇ CSV</strong></td><td>ZKBio Security / ZKTime.Net ডেস্কটপ সফটওয়্যারের জন্য।</td></tr>
+                <tr><td><strong>⬇ DAT</strong></td><td>USB দিয়ে ইমপোর্টের জন্য <code>user.dat</code>: ডিভাইসে Menu → USB Manager → Upload → User Info।</td></tr>
+              </tbody>
+            </table>
+            <h4>ঘরগুলো</h4>
+            <ul>
+              <li><strong>UID</strong> — ডিভাইসে ইউজারের নম্বর, প্রত্যেক কর্মীর আলাদা।</li>
+              <li><strong>কর্মী ID</strong> — ডিভাইসে যে ID দেখায় এবং প্রতিটি পাঞ্চের সাথে ERP-তে যায়।</li>
+              <li><strong>রোল</strong> — <em>ইউজার</em> বা <em>অ্যাডমিন</em> (অ্যাডমিন ডিভাইসের মেনু খুলতে পারেন)।</li>
+              <li><strong>পাসওয়ার্ড / PIN</strong> — ঐচ্ছিক, সর্বোচ্চ ৮ অঙ্ক।</li>
+            </ul>
+            <p>ডিভাইস গ্রহণ করার পরেই শুধু কর্মীকে <strong>সিঙ্ক হয়েছে</strong> চিহ্ন দেওয়া হয়; বাকিদের পরের সিঙ্কে আবার চেষ্টা হয়।</p>
+          </div>
+
+          <div class="guide-section" id="gb-attendance">
+            <div class="guide-section-title"><span class="guide-num">৬</span> হাজিরা</div>
+            <p>সব ডিভাইসের প্রতিটি পাঞ্চ, নতুনগুলো উপরে। <em>নতুন</em> = এখনো ERP গ্রহণ করেনি; <em>পাঠানো হয়েছে</em> = গ্রহণ করেছে (হালকা রঙে, পাঠানোর সময়সহ)।</p>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>থেকে / পর্যন্ত</strong></td><td>ওই তারিখের রেকর্ড দেখায় এবং TCP / ADMS থেকে আনার সময় ওই সীমায় আনে।</td></tr>
+                <tr><td><strong>TCP থেকে আনুন</strong></td><td>এখনই সব TCP/IP ডিভাইস পড়ে।</td></tr>
+                <tr><td><strong>↓ ADMS থেকে আনুন</strong></td><td>ADMS ডিভাইসকে জমা পাঞ্চ পাঠাতে বলে (সব ইতিহাস বা তারিখের সীমা)। প্রায় ১০ সেকেন্ডে আসে।</td></tr>
+                <tr><td><strong>ERP-তে পাঠান</strong></td><td>সব <em>নতুন</em> রেকর্ড এখনই ERP-তে পাঠায়।</td></tr>
+                <tr><td><strong>ফিল্টার</strong></td><td>কর্মী ID, তারিখ, ডিভাইস, ধরন (চেক ইন / আউট), পদ্ধতি (ফেস, ফিঙ্গারপ্রিন্ট, কার্ড, পাসওয়ার্ড), উৎস (ADMS / TCP), অবস্থা (নতুন / পাঠানো)।</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:10px">পাঞ্চের ধরন: <code>0</code> চেক-ইন, <code>1</code> চেক-আউট, <code>2</code> বিরতি শুরু, <code>3</code> বিরতি শেষ, <code>4</code> ওভারটাইম শুরু, <code>5</code> ওভারটাইম শেষ। একই পাঞ্চ কখনো দুবার জমা হয় না।</p>
+          </div>
+
+          <div class="guide-section" id="gb-sync">
+            <div class="guide-section-title"><span class="guide-num">৭</span> সিঙ্ক ও সময়সূচি</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>এখনই সিঙ্ক</strong> (উপরের বার)</td><td>TCP/IP ডিভাইস পড়ে, তারপর সব নতুন রেকর্ড ERP-তে পাঠায়।</td></tr>
+                <tr><td><strong>কর্মী সিঙ্ক</strong></td><td>সময়সূচি অনুযায়ী: ERP থেকে কর্মী এনে নতুনদের ডিভাইসে পাঠায়।</td></tr>
+                <tr><td><strong>হাজিরা পাঠানো</strong></td><td>সময়সূচি অনুযায়ী: TCP/IP ডিভাইস পড়ে, তারপর নতুন রেকর্ড ERP-তে পাঠায়।</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:10px">সময়সূচি cron ফরম্যাটে, <strong>সেটিংস → সিঙ্কের সময়সূচি</strong>-তে (বা প্রিসেট বোতামে) ঠিক করা হয়। প্রতিটির চালু/বন্ধ সুইচ আছে।</p>
+            <table class="guide-table">
+              <thead><tr><th>Cron</th><th>কখন চলে</th></tr></thead>
+              <tbody>
+                <tr><td><code>*/5 * * * *</code></td><td>প্রতি ৫ মিনিটে</td></tr>
+                <tr><td><code>*/15 * * * *</code></td><td>প্রতি ১৫ মিনিটে</td></tr>
+                <tr><td><code>0 * * * *</code></td><td>প্রতি ঘণ্টার শুরুতে</td></tr>
+                <tr><td><code>0 9,18 * * *</code></td><td>সকাল ৯টা ও সন্ধ্যা ৬টায়</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="gb-settings">
+            <div class="guide-section-title"><span class="guide-num">৮</span> সেটিংস</div>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><strong>ERP API কনফিগারেশন</strong></td><td>বেস URL (আপনার route-এ থাকলে <code>/api</code> সহ), ঐচ্ছিক Bearer টোকেন, এবং ERP অন্য path ব্যবহার করলে কর্মী আনা ও হাজিরা পাঠানোর পূর্ণ URL। <strong>সংযোগ পরীক্ষা</strong> <code>/zk/ping</code>-এ কল করে।</td></tr>
+                <tr><td><strong>সিঙ্কের সময়সূচি</strong></td><td>কর্মী সিঙ্ক ও হাজিরা পাঠানোর চালু/বন্ধ ও সময়।</td></tr>
+                <tr><td><strong>ADMS সার্ভারের তথ্য</strong></td><td>ডিভাইস যে ঠিকানা ব্যবহার করবে, এবং <strong>ADMS পোর্ট বদলান</strong> (সাথে সাথে কার্যকর, রিস্টার্ট লাগে না)। <strong>সার্ভার রিস্টার্ট</strong> ব্রিজ রিস্টার্ট করে।</td></tr>
+                <tr><td><strong>হাজিরার নিয়ম</strong></td><td>কাজ শুরুর সময় ও ছাড়ের মিনিট, দেরি গোনার জন্য।</td></tr>
+                <tr><td><strong>ব্র্যান্ডিং</strong> (superadmin)</td><td>অ্যাপের নাম, ট্যাগলাইন, লোগো, প্রধান রং, ফুটারে কোম্পানির নাম ও ওয়েবসাইট।</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-section" id="gb-users">
+            <div class="guide-section-title"><span class="guide-num">৯</span> ইউজার, রোল ও অনুমতি</div>
+            <p><strong>প্রশাসন → ইউজার ও রোল</strong> (শুধু মালিক): ইউজার যোগ করুন, রোল ও পাসওয়ার্ড দিন। বিল্ট-ইন রোল: <code>superadmin</code> (সব কিছু), <code>admin</code>, <code>viewer</code>। নিজের রোল বানিয়ে ঠিক কোন পেজ ও বোতাম ব্যবহার করা যাবে তা চালু করুন।</p>
+            <p><strong>প্রশাসন → ইন্টারফেস অনুমতি</strong>: সবার জন্য একসাথে পেজ ও বোতাম বন্ধ করুন। এই পেজ এবং ইউজারের রোল দুটোই অনুমতি দিলেই কোনো ফিচার ব্যবহার করা যায়। সার্ভারও একই নিয়ম মানে, তাই লুকানো বোতাম API দিয়েও ব্যবহার করা যায় না।</p>
+            <div class="guide-alert guide-alert-info">অ্যাডমিনের পাসওয়ার্ড ভুলে গেছেন? <code>.env</code>-এ <code>MASTER_USERNAME</code> ও <code>MASTER_PASSWORD</code> দিয়ে রিস্টার্ট করুন, সেগুলো দিয়ে সাইন ইন করে পাসওয়ার্ড বদলান। তারপর দুটো মান আবার মুছে দিন।</div>
+          </div>
+
+          <div class="guide-section" id="gb-erp">
+            <div class="guide-section-title"><span class="guide-num">১০</span> ERP API</div>
+            <p>আপনার ERP-তে API বেস URL-এর নিচে তিনটি JSON এন্ডপয়েন্ট লাগবে। টোকেন দেওয়া থাকলে প্রতিটি অনুরোধে <code>Authorization: Bearer &lt;token&gt;</code> যায়।</p>
+            <table class="guide-table">
+              <thead><tr><th>মেথড</th><th>পাথ</th><th>কাজ</th></tr></thead>
+              <tbody>
+                <tr><td><code>GET</code></td><td><code>/zk/ping</code></td><td>সংযোগ পরীক্ষা — যেকোনো 2xx উত্তর</td></tr>
+                <tr><td><code>GET</code></td><td><code>/zk/employees</code></td><td>ডিভাইসের জন্য কর্মী তালিকা</td></tr>
+                <tr><td><code>POST</code></td><td><code>/zk/attendance</code></td><td>পাঞ্চ গ্রহণ করে</td></tr>
+              </tbody>
+            </table>
+            <p class="guide-sub" style="margin-top:14px">GET /zk/employees — উত্তর</p>
+            <div class="code-block"><pre>{ "data": [
+  { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0, "password": "" }
+] }</pre></div>
+            <p class="guide-sub" style="margin-top:14px">POST /zk/attendance — অনুরোধের body</p>
+            <div class="code-block"><pre>{ "records": [
+  { "employeeId": "1001", "time": "2026-10-10 08:42:04", "status": "0",
+    "deviceId": "CQZ7224460123", "source": "adms", "verifyMethod": "fingerprint" }
+] }</pre></div>
+            <table class="guide-table" style="margin-top:10px">
+              <tbody>
+                <tr><td><code>uid</code></td><td>ডিভাইসে ইউজারের নম্বর, প্রত্যেক কর্মীর আলাদা</td></tr>
+                <tr><td><code>employee_id</code> / <code>employeeId</code></td><td>ডিভাইসে কর্মী যে ID ব্যবহার করেন</td></tr>
+                <tr><td><code>privilege</code></td><td><code>0</code> ইউজার, <code>14</code> অ্যাডমিন</td></tr>
+                <tr><td><code>status</code></td><td>পাঞ্চের ধরন, অংশ ৬ দেখুন</td></tr>
+                <tr><td><code>time</code></td><td>ডিভাইসের স্থানীয় সময়, <code>YYYY-MM-DD HH:MM:SS</code></td></tr>
+                <tr><td><code>source</code></td><td><code>adms</code> বা <code>tcp</code></td></tr>
+              </tbody>
+            </table>
+            <div class="guide-alert guide-alert-info">যেকোনো 2xx স্ট্যাটাস দিয়ে উত্তর দিন (চাইলে <code>{ "saved": 12 }</code>)। না দিলে রেকর্ডগুলো <em>নতুন</em> থাকবে এবং পরের বার আবার পাঠানো হবে — তাই <code>employeeId + time + deviceId</code> একই হলে ডুপ্লিকেট হিসেবে বাদ দিন।</div>
+          </div>
+
+          <div class="guide-section" id="gb-data">
+            <div class="guide-section-title"><span class="guide-num">১১</span> লগ, ডেটা ও ব্যাকআপ</div>
+            <p><strong>লগ</strong> পেজে সার্ভারের কার্যকলাপ দেখায়: ডিভাইসের handshake, আনা, পাঠানো ও ত্রুটি। <strong>লগ মুছুন</strong> লগ ও সিঙ্ক ইতিহাস দুটোই খালি করে।</p>
+            <p>সব ডেটা অ্যাপের পাশের <code>data/</code> ফোল্ডারে থাকে:</p>
+            <table class="guide-table">
+              <tbody>
+                <tr><td><code>attendance.json</code></td><td>পাঞ্চ (রিটেনশন সময় পর্যন্ত থাকে; ERP-তে না-পাঠানো রেকর্ড সবসময় থাকে)</td></tr>
+                <tr><td><code>employees.json</code></td><td>কর্মী</td></tr>
+                <tr><td><code>tcp-devices.json</code></td><td>TCP/IP ডিভাইস ও তাদের Comm Key</td></tr>
+                <tr><td><code>users.json</code>, <code>roles.json</code>, <code>permissions.json</code></td><td>লগইন অ্যাকাউন্ট ও অনুমতি</td></tr>
+                <tr><td><code>config.json</code>, <code>branding.json</code></td><td>সময়সূচি, নিয়ম ও ব্র্যান্ডিং (ERP URL/টোকেন ও পোর্ট থাকে <code>.env</code>-এ)</td></tr>
+              </tbody>
+            </table>
+            <div class="guide-alert guide-alert-warn">ব্যাকআপ নিতে <code>data/</code> ফোল্ডার আর <code>.env</code> ফাইল কপি করে রাখুন। অ্যাপ আপডেটের সময় এ দুটো রেখে দিন — নতুন কপি দিয়ে কখনো এদের উপর লিখবেন না।</div>
+          </div>
+
+          <div class="guide-section" id="gb-trouble">
+            <div class="guide-section-title"><span class="guide-num">১২</span> সমস্যার সমাধান</div>
+            <table class="guide-table">
+              <thead><tr><th>সমস্যা</th><th>যা দেখবেন</th></tr></thead>
+              <tbody>
+                <tr><td>ADMS ডিভাইস দেখা যাচ্ছে না</td><td>ডিভাইসে সার্ভার ঠিকানা ও পোর্ট, ফায়ারওয়াল, একই নেটওয়ার্ক কিনা (পিং টেস্ট)। ডিভাইস রিস্টার্ট দিয়ে <strong>লগে</strong> <code>ADMS handshake</code> খুঁজুন।</td></tr>
+                <tr><td>TCP: "সংযোগ প্রত্যাখ্যাত"</td><td>পোর্ট ভুল, বা ডিভাইসে TCP যোগাযোগ বন্ধ। ডিফল্ট পোর্ট <code>4370</code>।</td></tr>
+                <tr><td>TCP: "সময় শেষ" / "পাওয়া যাচ্ছে না"</td><td>IP ভুল, ডিভাইস বন্ধ, বা অন্য নেটওয়ার্ক। পিং টেস্ট চালান।</td></tr>
+                <tr><td>TCP: "Comm Key গ্রহণ করেনি"</td><td>ডিভাইসের Comm Key দিন (Menu → COMM → PC Connection), না থাকলে <code>0</code>।</td></tr>
+                <tr><td>ডিভাইসের IP বদলে গেছে</td><td>নতুন IP দিয়ে আবার যোগ করুন (সিরিয়াল নম্বর দিয়ে চিনে নেবে), অথবা <strong>এডিট</strong> ব্যবহার করুন।</td></tr>
+                <tr><td>সংযোগ পরীক্ষা ব্যর্থ</td><td><code>401/403</code>: টোকেন ভুল। <code>404</code>: বেস URL ভুল (route-এ থাকলে <code>/api</code> সহ দিন)।</td></tr>
+                <tr><td>রেকর্ড "নতুন"-ই থেকে যাচ্ছে</td><td>হাজিরা পাঠানো চালু করুন, <strong>ERP-তে পাঠান</strong> চেপে বার্তা ও লগ পড়ুন।</td></tr>
+                <tr><td>পুরোনো পাঞ্চ আসেনি</td><td>হাজিরা পেজে থেকে / পর্যন্ত দিয়ে TCP বা ADMS থেকে আনুন।</td></tr>
+                <tr><td>কর্মী ডিভাইসে নেই</td><td>কর্মীর পাশে <em>সিঙ্ক হয়নি</em> দেখাচ্ছে কিনা দেখুন, <strong>ডিভাইসে পাঠান</strong> চাপুন, ADMS ডিভাইসের জন্য ৩০ সেকেন্ড অপেক্ষা করুন।</td></tr>
+                <tr><td>অন্য কম্পিউটার থেকে পেজ খোলে না</td><td>ফায়ারওয়ালে ওয়েব পোর্ট (ডিফল্ট <code>3000</code>) খুলুন; <code>.env</code>-এ <code>HOST</code> হতে হবে <code>0.0.0.0</code>।</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div><!-- /guide-content -->
+      </div><!-- /guide-layout bn -->
     </div>
 
   </main>

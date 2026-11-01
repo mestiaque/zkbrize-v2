@@ -1,143 +1,493 @@
-# ZKTeco ↔ ERP Bridge
+# AttendBridge — ZKTeco ↔ ERP Bridge
 
-A Node.js application that bridges ZKTeco attendance devices with a ERP API.
+AttendBridge connects ZKTeco attendance devices to any ERP, HRM or payroll system. It sends
+employees to the devices, collects every punch in real time, and pushes the punches to your ERP
+over a simple JSON API. It runs on Windows or Linux, in the background, with a web dashboard
+in **English and Bengali**.
+
+## Contents
+
+1. [Features](#features)
+2. [Requirements](#requirements)
+3. [Installation](#installation)
+4. [First-time setup](#first-time-setup)
+5. [Running the bridge](#running-the-bridge)
+6. [Connecting devices](#connecting-devices)
+7. [Using the dashboard](#using-the-dashboard)
+8. [ERP API](#erp-api)
+9. [Configuration (.env)](#configuration-env)
+10. [Data, backup and updates](#data-backup-and-updates)
+11. [Troubleshooting](#troubleshooting)
+12. [Project structure](#project-structure)
+13. [বাংলায় দ্রুত শুরু](#বাংলায়-দ্রুত-শুরু)
+
+---
 
 ## Features
 
-- **ADMS Server** — newer ZKTeco devices push data in real-time
-- **TCP/IP Connector** — connect older devices via pull mode
-- **ERP Sync** — bidirectional: employees from ERP → devices, attendance from devices → ERP
-- **Live Dashboard** — real-time UI with Socket.IO
-- **Scheduler** — automated sync via cron
+- **ADMS push server**: newer ZKTeco devices (ADMS / Cloud Server / iClock) send punches by themselves, in real time.
+- **TCP/IP pull**: older devices are read over the network on port 4370, with Comm Key support.
+  It handles 8/16/40-byte attendance and 28/72-byte user records, so it works with older firmware too.
+  Devices are remembered across restarts, and a device whose IP changed is recognised by its serial number.
+- **Employees**: load from the ERP or from a device, add / edit / delete, and sync to every connected device.
+  Export CSV (ZKTeco desktop software) or `user.dat` (USB import).
+- **Attendance**: live table with filters and date ranges. Punches are pushed to the ERP on a schedule or on demand.
+  A punch is never stored twice.
+- **Dashboard**: present, late and absent today, a 7-day trend, late arrivals, arrivals by hour,
+  verification methods and punches per device.
+- **Users, roles and permissions**: built-in and custom roles, page- and button-level permissions,
+  all enforced by the server too.
+- **White-label**: app name, logo, colours and company name.
+- **Two languages**: English and Bengali, switchable from the top bar.
+- **Runs as a service** on Windows or Linux (systemd), or with PM2.
 
 ---
 
-## Quick Start
+## Requirements
 
-Requires **Node.js 20+**. Same commands on Linux and Windows:
+| What | Details |
+|---|---|
+| Operating system | Windows 10/11 or Server, or Linux (Ubuntu, Debian, etc.). macOS also works for testing. |
+| Node.js | **20 or newer** (LTS recommended) — <https://nodejs.org> |
+| Network | The computer and the devices on the same network (or routed to each other). Give the computer a **fixed IP**. |
+| Ports | `3000` web dashboard (incoming), `7788` ADMS push (incoming), `4370` TCP/IP devices (outgoing) |
+
+Check Node.js:
 
 ```bash
-git clone <repo-url>
-cd zkbrize-v1
-npm install     # also creates .env (from .env.example), data/ and logs/
-npm start       # open http://localhost:3000
+node -v    # must print v20 or higher
+npm -v
 ```
 
-On first launch the browser opens a **setup wizard**: it checks the system, creates the administrator
-account, and (optionally) connects your ERP and sets the app name and ADMS port. Everything can be
-changed later from **Settings**.
+**Installing Node.js on Ubuntu / Debian:**
 
-**One-click (runs in background, opens browser):**
-- Linux: `./start.sh` / `./stop.sh`
-- Windows: double-click `start.bat` / `stop.bat` (or `AttendBridge.vbs` to start without a console window)
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
 
-If PM2 is installed (`npm i -g pm2`), the start scripts use it, so the server restarts automatically if it crashes.
-
-**Run in the background and start with the computer (recommended for production):**
-- Windows: double-click `install-service.bat` (asks for Administrator rights). Remove with `uninstall-service.bat`.
-- Linux (systemd): `./install-service.sh` (asks for sudo). Remove with `./uninstall-service.sh`.
-
-### Branding (white-label)
-Sign in as superadmin → **Settings → Branding** to change the app name, tagline, logo, primary color,
-and the company name/website shown in the footer.
-
-### Forgot the admin password?
-Set `MASTER_USERNAME` and `MASTER_PASSWORD` in `.env`, restart, sign in with them and reset the
-password from **Administration → Users & Roles**. Then clear both values again.
+**Windows:** download the LTS installer from <https://nodejs.org> and keep the default options.
 
 ---
 
-## .env Configuration
+## Installation
 
-```env
-PORT=3000               # Web UI & API port
-HOST=0.0.0.0            # Listen address (127.0.0.1 = this computer only)
-ADMS_PORT=7788          # ZKTeco ADMS push port
+### 1. Get the files
 
-LARAVEL_API_URL=https://yourapp.com/api
-LARAVEL_API_TOKEN=your-sanctum-token
+Unzip the package (or clone the repository) into a permanent folder, for example
+`C:\AttendBridge` or `/opt/attendbridge`.
 
-SYNC_SCHEDULE=*/30 * * * *           # Employee sync frequency
-ATTENDANCE_FETCH_SCHEDULE=*/15 * * * * # Attendance push frequency
-
-SESSION_SECRET=...      # Generated automatically on first run
-MASTER_USERNAME=        # Optional emergency login (see above)
-MASTER_PASSWORD=
+```bash
+git clone https://github.com/mestiaque/zkbrize-v2.git attendbridge
+cd attendbridge
 ```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+This also runs the first-time setup script: it creates `.env` from `.env.example`, generates a
+`SESSION_SECRET`, and creates the `data/` and `logs/` folders. Running it again never overwrites
+an existing `.env` or data.
+
+### 3. Start it
+
+```bash
+npm start
+```
+
+Open <http://localhost:3000> (or `http://<this-computer-ip>:3000` from another computer).
+
+### 4. Open the firewall
+
+Allow the web port and the ADMS port (use your own values if you changed them).
+
+**Linux (UFW)**
+
+```bash
+sudo ufw allow 3000/tcp
+sudo ufw allow 7788/tcp
+```
+
+**Linux (firewalld)**
+
+```bash
+sudo firewall-cmd --permanent --add-port=3000/tcp --add-port=7788/tcp
+sudo firewall-cmd --reload
+```
+
+**Windows (PowerShell as Administrator)**
+
+```powershell
+netsh advfirewall firewall add rule name="AttendBridge Web"  dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="AttendBridge ADMS" dir=in action=allow protocol=TCP localport=7788
+```
+
+TCP/IP devices are reached outwards on port 4370, which normally needs no rule.
+
+---
+
+## First-time setup
+
+The first time you open the dashboard, a **setup wizard** runs:
+
+1. **System check**: Node.js version, and write access to `data/` and `logs/`.
+2. **Administrator account**: username and password (at least 8 characters). This is the owner account.
+3. **ERP connection** (optional): API base URL and token, with a **Test Connection** button. You can skip this and set it later.
+4. **Branding and devices**: app name, company name, and the **ADMS port** devices will push to.
+5. **Done**: shows the server address and port to enter on ADMS devices.
+
+After setup you are signed in. Switch the language any time with **EN | বাং** in the top bar.
+
+---
+
+## Running the bridge
+
+### For a quick test
+
+```bash
+npm start          # runs in this terminal; Ctrl+C stops it
+```
+
+### One-click start / stop (runs in the background, opens the browser)
+
+| | Start | Stop |
+|---|---|---|
+| Linux | `./start.sh` | `./stop.sh` |
+| Windows | double-click `start.bat` (or `AttendBridge.vbs` for no console window) | `stop.bat` |
+
+If PM2 is installed (`npm install -g pm2`), these scripts use it, so the server restarts automatically if it crashes.
+
+### As a service: starts with the computer (recommended for production)
+
+| | Install | Remove |
+|---|---|---|
+| Windows | double-click `install-service.bat` (asks for Administrator rights) | `uninstall-service.bat` |
+| Linux (systemd) | `./install-service.sh` (asks for sudo) | `./uninstall-service.sh` |
+
+The same can be done with `npm run service:install`, `npm run service:uninstall` and
+`npm run service:status` (as Administrator / with sudo).
+
+On Linux, check the service with:
+
+```bash
+systemctl status attendbridge
+journalctl -u attendbridge -f
+```
+
+### With PM2
+
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js     # process name: attendbridge
+pm2 save
+pm2 startup                       # then run the command it prints, to start on boot
+pm2 logs attendbridge
+```
+
+### Restarting
+
+Use **Settings → Restart Server** in the dashboard, or restart the service / PM2 process.
+Changing the ADMS port from Settings applies immediately without a restart.
+
+---
+
+## Connecting devices
+
+### ADMS devices (push, real time)
+
+On the device, open **Menu → COMM → Cloud Server Setting** (older models: **Comm → ADMS**):
+
+| Field | Value |
+|---|---|
+| Server Mode | `ADMS` (if offered) |
+| Enable Domain Name | `OFF` |
+| Server Address | this computer's LAN IP, e.g. `192.168.1.10` |
+| Server Port | the ADMS port (default `7788`; see **Settings → ADMS Server Info**) |
+| HTTPS / Proxy | `OFF` |
+
+Save and restart the device. It appears on the **Devices** page within a minute, and **Logs** shows
+`ADMS handshake`. Never enter `localhost` or `127.0.0.1` on a device.
+
+### TCP/IP devices (pull, older models)
+
+1. Give the device a fixed IP (**Menu → COMM → Ethernet**, DHCP off) or reserve its IP in the router.
+2. In the dashboard open **Devices → Network Ping Test** and check that the device answers.
+3. **Add TCP/IP Device**: IP, port `4370`, a name, and the **Comm Key** if the device has one
+   (**Menu → COMM → PC Connection**). Click **Connect Device**.
+
+Punches are read on every scheduled attendance push, with **Sync Now**, with **Attendance → Fetch TCP**,
+or with the device's **Fetch** button. Each read opens a short session: connect, pause the device,
+read, resume, disconnect.
+
+- Devices are saved in `data/tcp-devices.json` and reconnected after a restart.
+- An offline device shows **error** and is tried again on the next sync.
+- If a device's IP changes, add it again with the new IP: it is matched by serial number and keeps
+  its records, so nothing is sent to the ERP twice. Or use **Edit** in the device list.
+- Without a date range, a fetch takes the retention period (default 90 days). To fetch older
+  punches, set **From / To** on the Attendance page first.
+
+---
+
+## Using the dashboard
+
+| Page | What it does |
+|---|---|
+| **Dashboard** | Today's present / late / absent, punches waiting for the ERP, 7-day trend, late list, charts, devices, recent activity, sync history |
+| **Devices** | Add TCP/IP devices, ADMS server address, ping test, device list (Fetch, Sync Emp, Edit, Disconnect) |
+| **Employees** | Load from ERP / machine, add / edit / delete, Set to Device, search, CSV and DAT export |
+| **Attendance** | All punches with filters, date range, Fetch TCP, Fetch ADMS, Push to ERP |
+| **Logs** | Server log; Clear Logs |
+| **Settings** | ERP API, sync schedules, ADMS port, restart, attendance rules (start time, grace), branding |
+| **User Guide** | Full built-in help in English and Bengali |
+| **Users & Roles** | (owner) Users, built-in and custom roles |
+| **Interface Permissions** | (owner) Turn pages and buttons off for everyone |
+
+**Schedules** use cron format: `*/15 * * * *` means every 15 minutes, and `0 9,18 * * *` means at 09:00 and 18:00.
+
+- **Employee Sync** imports employees from the ERP and sends new ones to the devices.
+- **Attendance Push** reads TCP/IP devices, then sends new punches to the ERP.
+
+Each schedule has an on/off switch.
 
 ---
 
 ## ERP API
 
-Your ERP needs three JSON endpoints under the API base URL:
+Your ERP needs three JSON endpoints under the **API Base URL** (for example `https://erp.example.com/api`).
+If a token is set, every request sends `Authorization: Bearer <token>`.
+If your ERP uses other paths, enter the full URLs in **Settings → Fetch Employee URL / Sync Attendance URL**.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/zk/ping` | Connection test |
-| GET | `/zk/employees` | Employee list → devices (`uid`, `employee_id`, `name`, …) |
-| POST | `/zk/attendance` | Receives `{ "records": [ { "employeeId", "time", "status", "deviceId", … } ] }` |
+| GET | `/zk/ping` | Connection test: any 2xx response |
+| GET | `/zk/employees` | Employees for the devices |
+| POST | `/zk/attendance` | Receives punches |
 
-Full field reference and a Laravel example: [documentation/index.html](documentation/index.html#erp).
+**GET /zk/employees**: response
+
+```json
+{
+  "data": [
+    { "uid": 1, "employee_id": "1001", "name": "Ayesha Rahman", "privilege": 0, "password": "" }
+  ]
+}
+```
+
+**POST /zk/attendance**: request body
+
+```json
+{
+  "records": [
+    {
+      "employeeId": "1001",
+      "time": "2026-10-10 08:42:04",
+      "status": "0",
+      "deviceId": "CQZ7224460123",
+      "source": "adms",
+      "verifyMethod": "fingerprint"
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `uid` | Device user slot, unique per employee |
+| `employee_id` / `employeeId` | The ID the employee uses on the device |
+| `privilege` | `0` user, `14` device admin |
+| `status` | `0` Check-In, `1` Check-Out, `2` Break-Out, `3` Break-In, `4` OT-In, `5` OT-Out |
+| `time` | Device local time, `YYYY-MM-DD HH:MM:SS` |
+| `source` | `adms` or `tcp` |
+
+Reply with any **2xx** status (optionally `{ "saved": 12 }`). Otherwise the records stay *New* and are
+sent again on the next push, so treat `employeeId + time + deviceId` as unique and ignore duplicates.
+
+**Laravel example**
+
+```php
+// routes/api.php
+Route::middleware('auth:sanctum')->prefix('zk')->group(function () {
+    Route::get('/ping',        fn () => ['message' => 'ok']);
+    Route::get('/employees',   [ZKController::class, 'employees']);
+    Route::post('/attendance', [ZKController::class, 'storeAttendance']);
+});
+```
 
 ---
 
-## Device Setup
+## Configuration (.env)
 
-### ADMS (Newer Devices)
-On the ZKTeco device:
-1. Go to **Menu → COMM → Cloud Server Setting** (older models: **Comm → ADMS**)
-2. Server address: this computer's LAN IP, port `7788`
-3. Save and restart the device
+`.env` is created by `npm install`. Most values can also be changed from **Settings**, which writes them back to `.env`.
 
-The device will start pushing attendance automatically.
+| Key | Default | Meaning |
+|---|---|---|
+| `PORT` | `3000` | Web dashboard and API port |
+| `HOST` | `0.0.0.0` | Listen address (`127.0.0.1` = this computer only) |
+| `ADMS_PORT` | `7788` | Port ADMS devices push to |
+| `LARAVEL_API_URL` | | ERP API base URL |
+| `LARAVEL_API_TOKEN` | | ERP Bearer token (optional) |
+| `FETCH_EMPLOYEE_URL` | | Full URL for the employee list, if not `/zk/employees` |
+| `SYNC_ATTENDANCE_URL` | | Full URL for pushing attendance, if not `/zk/attendance` |
+| `SYNC_SCHEDULE` | `*/30 * * * *` | Employee sync schedule (cron) |
+| `ATTENDANCE_FETCH_SCHEDULE` | `*/15 * * * *` | Attendance push schedule (cron) |
+| `EMPLOYEE_SYNC_ENABLED` / `ATTENDANCE_SYNC_ENABLED` | `true` | Turn a schedule off with `false` |
+| `WORK_START_TIME` | `09:00` | Start of the working day, for the Late count |
+| `LATE_GRACE_MINUTES` | `15` | Minutes allowed after the start time |
+| `ATTENDANCE_RETENTION_DAYS` | `90` | Days of punches kept (records not yet sent to the ERP are always kept) |
+| `LOG_LEVEL` | `info` | `error`, `warn`, `info` or `debug` |
+| `SESSION_SECRET` | generated | Signs sign-in sessions; keep it secret |
+| `MASTER_USERNAME` / `MASTER_PASSWORD` | empty | Emergency superadmin login (see below) |
 
-### TCP/IP (Older Devices)
-1. Open the bridge web UI → **Devices**
-2. Click **Add TCP/IP Device**
-3. Enter device IP (default port: 4370)
-4. Click Connect
+Restart the bridge after editing `.env` by hand.
+
+**Forgot the admin password?** Set `MASTER_USERNAME` and `MASTER_PASSWORD` in `.env`, restart, sign in
+with them, and reset the password in **Administration → Users & Roles**. Then clear both values again.
 
 ---
 
-## Documentation
+## Data, backup and updates
 
-Open [documentation/index.html](documentation/index.html) in a browser for the full guide:
-installation, device setup, ERP API, features, configuration and troubleshooting.
+Everything is stored next to the app:
+
+| Path | Contents |
+|---|---|
+| `.env` | Ports, ERP URL and token, schedules, secrets |
+| `data/attendance.json` | Punches |
+| `data/employees.json` | Employees |
+| `data/tcp-devices.json` | TCP/IP devices and their Comm Keys |
+| `data/users.json`, `roles.json`, `permissions.json` | Sign-in accounts and permissions |
+| `data/config.json`, `branding.json`, `branding/` | Schedules, rules, branding and logo |
+| `data/sessions.json` | Signed-in sessions |
+| `logs/` | Server logs |
+
+**Backup:** copy `.env` and the `data/` folder. To restore, put them back and start the bridge.
+
+**Update to a new version:**
+
+1. Stop the bridge (`./stop.sh`, `stop.bat`, or stop the service).
+2. Back up `.env` and `data/`.
+3. Replace the program files, keeping `.env` and `data/`. With git: `git pull`.
+4. Run `npm install`.
+5. Start the bridge again.
 
 ---
 
-## Project Structure
+## Troubleshooting
+
+| Problem | What to check |
+|---|---|
+| `Cannot find module ...` on start | Run `npm install` in the app folder. |
+| Dashboard does not open from another PC | Firewall rule for the web port; `HOST=0.0.0.0` in `.env`. |
+| ADMS device does not appear | Server address and port on the device, firewall, same network. Restart the device and look for `ADMS handshake` in **Logs**. |
+| TCP: "Connection refused" | Wrong port, or TCP is off on the device (default port `4370`). |
+| TCP: "timed out" / "unreachable" | Wrong IP, device off, or a different network. Use the Ping Test. |
+| TCP: "rejected the comm key" | Enter the device's Comm Key, or `0` if it has none. |
+| Device IP changed | Add it again with the new IP (matched by serial number), or use **Edit**. |
+| Test Connection fails | `401/403`: wrong token. `404`: wrong base URL (include `/api` if your routes use it). |
+| Records stay "New" | Turn on Attendance Push, click **Push to ERP**, and read the message and **Logs**. |
+| Older punches missing | Set **From / To** on Attendance, then Fetch TCP or Fetch ADMS. |
+| Port already in use | Another program, or the bridge already running. Change `PORT` / `ADMS_PORT`, or stop the other one. |
+
+Check whether a port is listening:
+
+```bash
+sudo ss -tlnp | grep -E '3000|7788'               # Linux
+netstat -ano | findstr ":3000 :7788"               # Windows
+```
+
+Check whether a TCP/IP device answers:
+
+```bash
+nc -zv 192.168.1.201 4370                                     # Linux
+Test-NetConnection -ComputerName 192.168.1.201 -Port 4370     # Windows PowerShell
+```
+
+---
+
+## Project structure
 
 ```
 attendbridge/
 ├── src/
-│   ├── server.js          # Main entry point
-│   ├── install.js         # First-run setup wizard API
-│   ├── auth.js            # Users, roles, permissions
-│   ├── branding.js        # White-label settings
-│   ├── routes.js          # Express API routes
-│   ├── store.js           # In-memory state
-│   ├── logger.js          # Winston logger
-│   ├── scheduler.js       # Cron jobs
-│   ├── adms/
-│   │   └── server.js      # ADMS HTTP push server
-│   ├── tcpip/
-│   │   └── connector.js   # TCP/IP device connector
-│   └── laravel/
-│       └── api.js         # ERP API client
+│   ├── server.js            Entry point: web server, sessions, startup
+│   ├── routes.js            REST API for the dashboard
+│   ├── authRoutes.js        Sign-in, users and roles API
+│   ├── auth.js              Users, roles, permissions
+│   ├── install.js           Setup wizard API
+│   ├── store.js             State and data files
+│   ├── scheduler.js         Employee sync and attendance push schedules
+│   ├── analytics.js         Dashboard numbers and charts
+│   ├── branding.js          White-label settings
+│   ├── adms/server.js       ADMS push server (iclock protocol)
+│   ├── tcpip/zkclient.js    ZKTeco TCP protocol client (port 4370)
+│   ├── tcpip/connector.js   TCP/IP devices: sessions, fetch, user writes
+│   └── laravel/api.js       ERP API client
 ├── public/
-│   ├── index.html
-│   ├── install.html       # Setup wizard
+│   ├── index.html           Dashboard
+│   ├── login.html           Sign-in page
+│   ├── install.html         Setup wizard
 │   ├── css/style.css
-│   └── js/app.js
-├── scripts/
-│   ├── setup.js           # Runs after npm install
-│   └── service.js         # Windows service / systemd install
-├── .env.example           # Settings template (copied to .env by npm install)
-├── data/                  # Auto-created: users, settings, branding
-├── logs/                  # Auto-created
-└── README.md
+│   └── js/                  app.js, admin.js, charts.js, branding.js, i18n.js (English / Bengali)
+├── scripts/                 setup.js (after npm install), service.js (Windows service / systemd), package.js
+├── documentation/           Offline HTML documentation
+├── .github/ci/              CI smoke test and ZKTeco device emulator
+├── start.* / stop.*         One-click launchers
+├── install-service.* / uninstall-service.*
+├── ecosystem.config.js      PM2 config
+└── .env.example             Settings template
 ```
+
+**Development checks** (the same as CI):
+
+```bash
+python3 .github/ci/zk_emulator.py 14371 &         # emulated TCP/IP device
+python3 .github/ci/zk_emulator.py 14372 1234 &    # with Comm Key 1234
+ZK_EMU_PORT=14371 ZK_EMU_KEY_PORT=14372 node .github/ci/smoke.js full
+```
+
+Run the smoke test on a fresh copy: it runs the setup wizard.
+
+---
+
+## বাংলায় দ্রুত শুরু
+
+**১. প্রয়োজন:** Node.js 20 বা নতুন (<https://nodejs.org>)। কম্পিউটারকে স্থায়ী IP দিন।
+
+**২. ইনস্টল ও চালু:**
+
+```bash
+npm install      # .env, data/ ও logs/ নিজে থেকে তৈরি হয়
+npm start        # তারপর ব্রাউজারে http://localhost:3000 খুলুন
+```
+
+**৩. সেটআপ উইজার্ড:** প্রথমবার খুললে উইজার্ড চলবে: সিস্টেম যাচাই, অ্যাডমিন অ্যাকাউন্ট, ERP সংযোগ (ঐচ্ছিক), অ্যাপের নাম ও ADMS পোর্ট।
+উপরের বারের **EN | বাং** দিয়ে ভাষা বদলানো যায়।
+
+**৪. ফায়ারওয়াল:** ওয়েব পোর্ট `3000` আর ADMS পোর্ট `7788` খুলে দিন (উপরের [Installation](#4-open-the-firewall) অংশে কমান্ড আছে)।
+
+**৫. কম্পিউটার চালু হলে নিজে থেকে চালু:**
+
+- Windows-এ `install-service.bat` চালান (Administrator)।
+- Linux-এ `./install-service.sh` চালান।
+
+**৬. ডিভাইস যুক্ত করা:**
+
+- **ADMS ডিভাইস:** ডিভাইসে **Menu → COMM → Cloud Server Setting**-এ সার্ভার ঠিকানা হিসেবে এই কম্পিউটারের IP আর পোর্ট `7788` দিন।
+- **পুরোনো (TCP/IP) ডিভাইস:** ড্যাশবোর্ডের **ডিভাইস** পেজে IP, পোর্ট `4370` আর Comm Key (থাকলে) দিয়ে যোগ করুন।
+  IP বদলে গেলে নতুন IP দিয়ে আবার যোগ করলেই চলবে। সিরিয়াল নম্বর দেখে ডিভাইস চিনে নেবে, কোনো রেকর্ড দুবার যাবে না।
+
+**৭. প্রতিদিনের কাজ:**
+
+1. **কর্মী → ERP থেকে লোড → ডিভাইসে পাঠান**।
+2. পাঞ্চ **হাজিরা** পেজে দেখা যাবে।
+3. সেটিংসে **হাজিরা পাঠানো** চালু রাখলে নতুন পাঞ্চ নিজে থেকেই ERP-তে যাবে।
+
+**৮. ব্যাকআপ:** `.env` ফাইল আর `data/` ফোল্ডার কপি করে রাখুন। আপডেটের সময় এ দুটো রেখে দিন।
+
+বিস্তারিত সব কিছু ড্যাশবোর্ডের **ব্যবহার নির্দেশিকা** পেজে বাংলা ও ইংরেজিতে আছে।
 
 ---
 

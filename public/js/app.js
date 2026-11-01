@@ -1306,23 +1306,31 @@ async function doLogout() {
   window.location.href = '/login';
 }
 
-function initDashboardGreeting() {
-  const h = new Date().getHours();
-  const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const el = document.getElementById('dash-greeting');
-  if (el) el.textContent = g + ' 👋';
-  const d = document.getElementById('dash-date');
-  if (d) d.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+// Date and time in the centre of the top bar, in the interface language
+function startHeaderClock() {
+  const tick = () => {
+    const now = new Date();
+    const locale = window.I18N ? I18N.locale() : 'en-US';
+    setText('clock-time', now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    setText('clock-date', now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+  };
+  tick();
+  setInterval(tick, 1000);
+  document.addEventListener('langchange', tick);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initDashboardGreeting();
+  startHeaderClock();
   // Know the user's role and permissions before choosing which page to open
-  await Promise.all([loadCurrentUser(), applyPermissions()]);
-  document.body.classList.remove('perms-pending');
-  let saved = null;
-  try { saved = localStorage.getItem('activePage'); } catch {}
-  showPage(location.hash.slice(1) || saved || 'dashboard');
+  try {
+    await Promise.all([loadCurrentUser(), applyPermissions()]);
+    let saved = null;
+    try { saved = localStorage.getItem('activePage'); } catch {}
+    showPage(location.hash.slice(1) || saved || 'dashboard');
+  } finally {
+    // Never leave the screen hidden, even if loading the permissions failed
+    document.body.classList.remove('perms-pending');
+  }
   fetchState();
   loadSettings();
   setInterval(fetchState, 30000);

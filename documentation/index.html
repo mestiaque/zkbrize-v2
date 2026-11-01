@@ -106,6 +106,7 @@
   <a href="#users">Users, roles &amp; permissions</a>
   <a href="#branding">Branding (white-label)</a>
   <a href="#logs">Logs</a>
+  <a href="#language">Language &amp; top bar</a>
   <a href="#user-guide">Built-in User Guide</a>
   <div class="group">Reference</div>
   <a href="#configuration">Configuration (.env)</a>
@@ -145,7 +146,7 @@
   <h3>Features</h3>
   <div class="features">
     <div class="feature"><b>Real-time ADMS push</b><span>Newer devices send every punch the moment it happens.</span></div>
-    <div class="feature"><b>TCP/IP pull</b><span>Older devices without ADMS are read over the network.</span></div>
+    <div class="feature"><b>TCP/IP pull</b><span>Older devices without ADMS are read over the network, including older firmware record formats.</span></div>
     <div class="feature"><b>Two-way ERP sync</b><span>Employees from ERP → devices, attendance from devices → ERP.</span></div>
     <div class="feature"><b>Automatic schedules</b><span>Sync employees and push attendance on a timetable you choose.</span></div>
     <div class="feature"><b>Attendance analytics</b><span>Present, late and absent today, a 7-day trend, arrivals by hour, methods and devices.</span></div>
@@ -153,6 +154,7 @@
     <div class="feature"><b>Users &amp; roles</b><span>Multiple accounts with fine-grained, server-enforced permissions.</span></div>
     <div class="feature"><b>White-label</b><span>Your app name, logo, colors and company name.</span></div>
     <div class="feature"><b>Setup wizard</b><span>Browser-based first-run setup; no config files to edit.</span></div>
+    <div class="feature"><b>English &amp; Bengali</b><span>The whole interface and User Guide in two languages, switchable any time.</span></div>
     <div class="feature"><b>Runs as a service</b><span>Starts with Windows or Linux and restarts itself if it stops.</span></div>
   </div>
 </section>
@@ -267,9 +269,22 @@ npm start</code></pre></li>
     <li>Give the device a fixed IP address (<b>Menu → COMM → Ethernet</b>).</li>
     <li>On the <b>Devices</b> page, use <b>Network Ping Test</b> to check that the bridge can reach it.</li>
     <li>Under <b>Add TCP/IP Device</b>, enter the IP, port (default <code>4370</code>), a name, and the device's <b>Comm Key</b> (Menu → COMM → PC Connection → Comm Key) if one is set. Click <b>Connect Device</b>. The device's model, serial number and firmware appear in the device list.</li>
-    <li>Punches are read automatically every time <b>Attendance Push</b> runs (see <a href="#schedule">Sync schedule</a>), and on demand with <b>Attendance → Fetch TCP</b> or <b>Sync Now</b>.</li>
+    <li>Punches are read automatically every time <b>Attendance Push</b> runs (see <a href="#schedule">Sync schedule</a>), and on demand with <b>Attendance → Fetch TCP</b>, <b>Sync Now</b> or the device's <b>Fetch</b> button.</li>
   </ol>
-  <p>Devices close idle connections after a while; AttendBridge simply reconnects on the next read or write, so a TCP device stays listed as connected. <b>Load from Machine</b>, <b>Set to Device</b>, and adding, editing or deleting an employee all work on TCP devices too. When several devices are connected, <b>Load from Machine</b> asks which one to read from.</p>
+  <p>Every read or write opens a short session — connect, pause the device, do the work, resume it, disconnect — so no connection is held open and other software can still reach the device between reads. <b>Load from Machine</b>, <b>Set to Device</b>, and adding, editing or deleting an employee all work on TCP devices too. When several devices are connected, <b>Load from Machine</b> asks which one to read from.</p>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><b>Fetch</b></td><td>Reads this device's punches now.</td></tr>
+    <tr><td><b>Sync Emp</b></td><td>Loads employees from the ERP and writes them to this device.</td></tr>
+    <tr><td><b>Edit</b></td><td>Changes the IP, port, name or Comm Key. The device keeps its ID and its records. Leave the Comm Key empty to keep it; <code>0</code> means none.</td></tr>
+    <tr><td><b>Disconnect</b></td><td>Removes the device from the bridge. Its attendance records are kept.</td></tr>
+  </table>
+  <ul>
+    <li><b>Remembered across restarts.</b> TCP/IP devices are saved in <code>data/tcp-devices.json</code> and reconnected when AttendBridge starts.</li>
+    <li><b>Offline devices are retried.</b> A device that cannot be reached shows <i>error</i> (hover it for the reason) and is tried again on the next sync — it is never dropped.</li>
+    <li><b>IP address changed?</b> Add the device again with its new IP. AttendBridge recognises it by its <b>serial number</b> and updates the existing entry, so its punches are not imported or sent to the ERP twice. You can also use <b>Edit</b>.</li>
+    <li><b>History window.</b> A device holds its whole history. Without a date range, a fetch takes the retention period (<code>ATTENDANCE_RETENTION_DAYS</code>, 90 days by default — counted back from the device's newest punch too, so a device with a wrong clock loses nothing). To import older punches, set <b>From</b> / <b>To</b> on the Attendance page and click <b>Fetch TCP</b>.</li>
+  </ul>
 
   <h3 id="firewall">Firewall</h3>
   <p>Devices must be able to reach the ADMS port, and browsers the web port. Allow both on the computer running AttendBridge.</p>
@@ -433,8 +448,8 @@ class ZKController extends Controller
   <table>
     <tr><th>Button</th><th>What it does</th></tr>
     <tr><td><b>Load from ERP</b></td><td>Imports the employee list from your ERP's <code>/zk/employees</code>.</td></tr>
-    <tr><td><b>Load from Machine</b></td><td>Reads the users currently stored on a connected ADMS device.</td></tr>
-    <tr><td><b>Set to Device</b></td><td>Sends employees that are not on the devices yet (<i>Not Synced</i>) to all connected devices. ADMS devices pick the change up within about 30 seconds.</td></tr>
+    <tr><td><b>Load from Machine</b></td><td>Reads the users currently stored on a connected device (ADMS or TCP/IP).</td></tr>
+    <tr><td><b>Set to Device</b></td><td>Sends employees that are not on the devices yet (<i>Not Synced</i>) to all connected devices. ADMS devices pick the change up within about 30 seconds. An employee is marked <i>Synced</i> only after a device accepted them; the rest are tried again on the next sync.</td></tr>
     <tr><td><b>+ Add Employee</b> / Edit / Delete</td><td>Manage a single employee; the change is sent to connected devices. Fingerprints and faces already enrolled on the device are kept when you edit a name.</td></tr>
     <tr><td><b>CSV</b> / <b>DAT</b></td><td>Export for ZKTeco desktop software (CSV) or for USB-drive import on the device (<code>user.dat</code>).</td></tr>
   </table>
@@ -446,7 +461,7 @@ class ZKController extends Controller
   <figure><img src="images/attendance.png" alt="Attendance page"><figcaption>All punches from all devices, with filters by employee, date, device, type, method, source and status.</figcaption></figure>
   <table>
     <tr><th>Button</th><th>What it does</th></tr>
-    <tr><td><b>Fetch TCP</b></td><td>Reads punches from connected TCP/IP devices, optionally limited to the <b>From</b>/<b>To</b> dates.</td></tr>
+    <tr><td><b>Fetch TCP</b></td><td>Reads punches from TCP/IP devices, limited to the <b>From</b>/<b>To</b> dates when set (otherwise the retention period).</td></tr>
     <tr><td><b>Fetch ADMS</b></td><td>Asks ADMS devices to upload their stored history (useful after first connecting a device that already has punches).</td></tr>
     <tr><td><b>Push to ERP</b></td><td>Sends all records with status <i>New</i> to your ERP now. Delivered records show the time in <b>Pushed At</b>.</td></tr>
   </table>
@@ -511,10 +526,16 @@ class ZKController extends Controller
   <p>The <b>Logs</b> page shows the latest server messages — device connections, every ADMS request, sync results and errors. It is the first place to look when a device does not appear or a sync fails. Log files are kept in the <code>logs/</code> folder and rotated automatically (5 × 5 MB). <b>Clear Logs</b> empties the log and sync history only; attendance records are not affected.</p>
 </section>
 
+<section id="language">
+  <h2>Language &amp; top bar</h2>
+  <p>AttendBridge speaks <b>English</b> and <b>Bengali (বাংলা)</b>. Switch with the <b>EN | বাং</b> buttons in the top bar; the sign-in page and the setup wizard have the same switch. Everything changes at once — menus, buttons, tables, messages, error texts and the User Guide — and the choice is remembered in that browser, so each user can pick their own language. Attendance data and what is sent to your ERP are not affected.</p>
+  <p>The top bar also shows the <b>current date and time</b> (in the chosen language), the live connection to the server (<i>Live</i> / <i>Disconnected</i>) and <b>Sync Now</b>.</p>
+</section>
+
 <!-- ═══════════════════════════════════════════════════════════ -->
 <section id="user-guide">
   <h2>Built-in User Guide</h2>
-  <p>The <b>User Guide</b> page inside the app is a short version of this document for everyday users: quick start, the exact ADMS settings to enter on a device (filled in with this computer's IP address and ADMS port), the ERP API format and common problems.</p>
+  <p>The <b>User Guide</b> page inside the app covers every feature for everyday users, in English and Bengali: getting started, the dashboard, ADMS and TCP/IP devices (with the exact settings to enter, filled in with this computer's IP address and ADMS port), employees, attendance, schedules, settings, users and permissions, the ERP API, data and backup, and troubleshooting.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -549,6 +570,7 @@ class ZKController extends Controller
     <tr><td><code>.env</code></td><td>Ports, ERP connection, schedules, session secret.</td></tr>
     <tr><td><code>data/users.json</code>, <code>data/roles.json</code></td><td>User accounts (hashed passwords) and roles.</td></tr>
     <tr><td><code>data/employees.json</code></td><td>The bridge's employee list.</td></tr>
+    <tr><td><code>data/tcp-devices.json</code></td><td>TCP/IP devices (address, name, serial number and Comm Key).</td></tr>
     <tr><td><code>data/attendance.json</code></td><td>Attendance records (kept across restarts; older than the retention period and already sent to the ERP are removed).</td></tr>
     <tr><td><code>data/config.json</code>, <code>data/permissions.json</code></td><td>Schedule switches and interface permissions.</td></tr>
     <tr><td><code>data/branding.json</code>, <code>data/branding/</code></td><td>Branding settings and uploaded logo.</td></tr>
@@ -597,7 +619,9 @@ class ZKController extends Controller
   <h4>A TCP/IP device will not connect</h4>
   <ul>
     <li>Check the IP and port (<code>4370</code>) on the device: Menu → COMM → Ethernet.</li>
-    <li>If the device has a Comm Key, enter the same number in the password field. “Device rejected the comm key” means it does not match.</li>
+    <li>“Connection refused”: wrong port, or TCP communication is switched off on the device. “Timed out” or “unreachable”: wrong IP, the device is off, or it is on another network — run the Ping Test.</li>
+    <li>If the device has a Comm Key, enter the same number in the Comm Key field. “Device rejected the comm key” means it does not match; enter <code>0</code> if the device has none.</li>
+    <li>If the device's IP changed, add it again with the new IP (it is matched by serial number) or use <b>Edit</b>.</li>
     <li>Only one program can talk to a device over TCP at a time — close ZKTeco desktop software (ZKTime, ZKBio) while testing.</li>
   </ul>
 
@@ -629,7 +653,8 @@ class ZKController extends Controller
     <li>Employee sync from ERP to devices and attendance push to ERP, on demand or on a schedule</li>
     <li>Browser-based setup wizard</li>
     <li>Attendance analytics dashboard; attendance kept across restarts</li>
-    <li>TCP/IP devices: comm key, automatic reconnect, scheduled fetch, user read/write</li>
+    <li>TCP/IP devices: comm key, all record formats, saved across restarts, matched by serial number when their IP changes, scheduled fetch, user read/write</li>
+    <li>English and Bengali interface and User Guide</li>
     <li>Users, custom roles and server-enforced permissions</li>
     <li>White-label branding</li>
     <li>Windows service and systemd installers</li>

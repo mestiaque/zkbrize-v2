@@ -1,23 +1,32 @@
-# ZK Bridge — Setup Guide
+# AttendBridge — সেটআপ গাইড (বাংলা)
 
 **Developer:** M. Estiaque — https://mestiaque.com
 
+ইংরেজিতে পূর্ণ নির্দেশনা: [README.md](README.md)। ড্যাশবোর্ডের **ব্যবহার নির্দেশিকা** পেজেও সব কিছু বাংলায় আছে।
+
 ---
 
-## প্রয়োজনীয় Software ইনস্টল
+## ১. যা লাগবে
 
-### Node.js (v20 বা তার উপরে)
+| জিনিস | বিস্তারিত |
+|---|---|
+| Node.js | **20 বা তার নতুন** সংস্করণ |
+| কম্পিউটার | Windows 10/11/Server বা Linux; সবসময় চালু থাকে এমন PC |
+| নেটওয়ার্ক | ডিভাইস আর কম্পিউটার একই নেটওয়ার্কে; কম্পিউটারের **স্থায়ী IP** |
+| পোর্ট | `3000` ওয়েব ড্যাশবোর্ড, `7788` ADMS (ডিভাইস এখানে ডেটা পাঠায়), `4370` TCP/IP ডিভাইস |
+
+### Node.js ইনস্টল
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-node -v   # চেক করুন
+node -v   # v20 বা তার বেশি দেখাতে হবে
 ```
 
-**Windows:**
-- https://nodejs.org থেকে LTS version ডাউনলোড করুন
-- ইনস্টল করার পর Command Prompt-এ চেক করুন:
+**Windows:** https://nodejs.org থেকে LTS সংস্করণ নামিয়ে ইনস্টল করুন। তারপর Command Prompt-এ:
+
 ```cmd
 node -v
 npm -v
@@ -25,335 +34,249 @@ npm -v
 
 ---
 
-### PM2 (Background Process Manager)
+## ২. প্রজেক্ট ইনস্টল ও চালু
+
+```bash
+cd /path/to/attendbridge
+npm install     # .env, data/ ও logs/ নিজে থেকে তৈরি হয়
+npm start       # তারপর ব্রাউজারে http://localhost:3000
+```
+
+প্রথমবার খুললে **সেটআপ উইজার্ড** চলবে:
+
+1. সিস্টেম যাচাই
+2. অ্যাডমিন অ্যাকাউন্ট
+3. ERP সংযোগ (ঐচ্ছিক)
+4. অ্যাপের নাম ও ADMS পোর্ট
+
+উপরের বারের **EN | বাং** দিয়ে ভাষা বদলানো যায়।
+
+একই নেটওয়ার্কের অন্য কম্পিউটার থেকে খুলতে: `http://<এই-কম্পিউটারের-IP>:3000`
+
+---
+
+## ৩. Background-এ চালানো ও কম্পিউটার চালু হলে নিজে থেকে চালু
+
+### সবচেয়ে সহজ: Service হিসেবে ইনস্টল (প্রস্তাবিত)
+
+| | ইনস্টল | সরানো |
+|---|---|---|
+| Windows | `install-service.bat` ডাবল-ক্লিক (Administrator অনুমতি চাইবে) | `uninstall-service.bat` |
+| Linux | `./install-service.sh` (sudo চাইবে) | `./uninstall-service.sh` |
+
+Linux-এ অবস্থা ও লগ দেখতে:
+
+```bash
+systemctl status attendbridge
+journalctl -u attendbridge -f
+sudo systemctl restart attendbridge
+```
+
+### এক ক্লিকে চালু / বন্ধ
+
+| | চালু | বন্ধ |
+|---|---|---|
+| Linux | `./start.sh` | `./stop.sh` |
+| Windows | `start.bat` (কনসোল ছাড়া: `AttendBridge.vbs`) | `stop.bat` |
+
+### PM2 দিয়ে (ঐচ্ছিক)
 
 ```bash
 npm install -g pm2
-pm2 -v   # চেক করুন
-```
-
-> Windows-এ Administrator হিসেবে Command Prompt/PowerShell-এ চালান।
-
----
-
-## Project Setup
-
-```bash
-# Project folder-এ যান
-cd /path/to/zk-bridge
-
-# Dependencies ইনস্টল করুন
-npm install
-```
-
----
-
-## Background-এ Run করা
-
-### Linux
-
-```bash
-# PM2 দিয়ে start করুন
-pm2 start src/server.js --name zk-bridge
-
-# Status দেখুন
-pm2 status
-
-# Live logs দেখুন
-pm2 logs zk-bridge
-
-# Restart করুন
-pm2 restart zk-bridge
-
-# Stop করুন
-pm2 stop zk-bridge
-```
-
-### Windows
-
-```cmd
-# PM2 দিয়ে start করুন
-pm2 start src/server.js --name zk-bridge
-
-# Status দেখুন
-pm2 status
-
-# Live logs দেখুন
-pm2 logs zk-bridge
-```
-
----
-
-## PC চালু হলে Auto-Start
-
-### Linux (systemd)
-
-```bash
-# PM2 startup script তৈরি করুন
-pm2 startup
-
-# উপরের command output-এ একটা sudo command দেবে, সেটা copy করে run করুন
-# উদাহরণ:
-sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u your-username --hp /home/your-username
-
-# বর্তমান process list save করুন
+pm2 start ecosystem.config.js   # process-এর নাম: attendbridge
 pm2 save
+pm2 startup                     # যে কমান্ড দেখাবে সেটা চালান — বুট হলে নিজে থেকে চালু হবে
+
+pm2 status
+pm2 logs attendbridge
+pm2 restart attendbridge
+pm2 stop attendbridge
 ```
 
-এখন থেকে PC reboot হলেও zk-bridge স্বয়ংক্রিয়ভাবে চালু হবে।
-
-**চেক করতে:**
-```bash
-pm2 list
-```
+> PM2 ইনস্টল থাকলে `start.sh` / `start.bat` নিজে থেকেই PM2 ব্যবহার করে।
 
 ---
 
-### Windows (Auto-start)
+## ৪. পোর্ট ও ফায়ারওয়াল
 
-```cmd
-# PowerShell (Administrator) দিয়ে চালান:
-pm2 startup
+### পোর্ট চালু আছে কিনা দেখুন
 
-# দেওয়া command run করুন, তারপর:
-pm2 save
-
-# pm2-startup package দিয়ে Windows Service হিসেবে রেজিস্টার করুন:
-npm install -g pm2-windows-startup
-pm2-startup install
-```
-
-অথবা **Task Scheduler** দিয়ে:
-1. `Win + R` → `taskschd.msc`
-2. "Create Basic Task" → Trigger: "When the computer starts"
-3. Action: `pm2 resurrect`
-
----
-
-## Port চালু আছে কিনা চেক করুন
-
-### ব্যবহৃত Ports
-| Port | কাজ |
-|------|-----|
-| `3000` | Web UI (Browser) |
-| `5015` | ADMS Protocol (ZKTeco device connect) |
-
-### Linux-এ চেক করুন
 ```bash
-# কোন port listen করছে দেখুন
-sudo ss -tlnp | grep -E '3000|5015'
-
-# অথবা
-sudo netstat -tlnp | grep -E '3000|5015'
-
-# নির্দিষ্ট port-এ কিছু আছে কিনা
-sudo lsof -i :3000
-sudo lsof -i :5015
+# Linux
+sudo ss -tlnp | grep -E '3000|7788'
 ```
 
-### Windows-এ চেক করুন
 ```cmd
-netstat -ano | findstr :3000
-netstat -ano | findstr :5015
+:: Windows
+netstat -ano | findstr ":3000 :7788"
 ```
 
-### Firewall-এ Port খুলুন
+### ফায়ারওয়ালে পোর্ট খুলুন
 
 **Linux (UFW):**
+
 ```bash
-sudo ufw allow 3000
-sudo ufw allow 5015
-sudo ufw status
+sudo ufw allow 3000/tcp
+sudo ufw allow 7788/tcp
 ```
 
 **Linux (firewalld):**
+
 ```bash
-sudo firewall-cmd --permanent --add-port=3000/tcp
-sudo firewall-cmd --permanent --add-port=5015/tcp
+sudo firewall-cmd --permanent --add-port=3000/tcp --add-port=7788/tcp
 sudo firewall-cmd --reload
 ```
 
 **Windows (PowerShell — Administrator):**
+
 ```powershell
-netsh advfirewall firewall add rule name="ZK Bridge Web" dir=in action=allow protocol=TCP localport=3000
-netsh advfirewall firewall add rule name="ZK Bridge ADMS" dir=in action=allow protocol=TCP localport=5015
+netsh advfirewall firewall add rule name="AttendBridge Web"  dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="AttendBridge ADMS" dir=in action=allow protocol=TCP localport=7788
 ```
+
+> পোর্ট বদলালে (`.env`-এ `PORT` / `ADMS_PORT`, অথবা সেটিংস থেকে) উপরের নম্বরগুলোও বদলে নিন।
 
 ---
 
-## Same Network-এ Machine চালু আছে কিনা Terminal দিয়ে চেক করুন
+## ৫. ডিভাইস যুক্ত করা
 
-### একটা নির্দিষ্ট Machine Ping করুন
+### ADMS ডিভাইস (নতুন মডেল, নিজে থেকে ডেটা পাঠায়)
 
-**Linux & Windows উভয়ে:**
+ডিভাইসে **Menu → COMM → Cloud Server Setting** (পুরোনো মডেলে **Comm → ADMS**):
+
+| ঘর | মান |
+|---|---|
+| Server Address | এই কম্পিউটারের LAN IP (যেমন `192.168.1.10`) |
+| Server Port | ADMS পোর্ট (ডিফল্ট `7788`) |
+| Enable Domain Name / HTTPS / Proxy | `OFF` |
+
+সংরক্ষণ করে ডিভাইস রিস্টার্ট দিন। কখনো `localhost` বা `127.0.0.1` দেবেন না।
+
+### TCP/IP ডিভাইস (পুরোনো মডেল)
+
+1. ডিভাইসকে স্থায়ী IP দিন (Menu → COMM → Ethernet, DHCP বন্ধ)।
+2. ড্যাশবোর্ডে **ডিভাইস → নেটওয়ার্ক পিং টেস্ট**।
+3. **TCP/IP ডিভাইস যোগ করুন**: IP, পোর্ট `4370`, নাম, আর থাকলে Comm Key।
+
+IP বদলে গেলে নতুন IP দিয়ে আবার যোগ করলেই হবে। সিরিয়াল নম্বর দেখে আগের ডিভাইস চিনে নেবে, কোনো রেকর্ড দুবার যাবে না। অথবা ডিভাইস তালিকার **এডিট** বোতাম ব্যবহার করুন।
+
+---
+
+## ৬. নেটওয়ার্কে ডিভাইস খোঁজা ও যাচাই
+
+### একটি ডিভাইস ping করুন
+
 ```bash
 ping 192.168.1.100
 ```
 
-**নির্দিষ্ট Port চালু আছে কিনা (TCP Ping):**
+### ডিভাইসের 4370 পোর্ট খোলা কিনা
 
-Linux:
 ```bash
-# ZKTeco machine-এর port 4370 চালু আছে কিনা
+# Linux
 nc -zv 192.168.1.100 4370
-
-# অথবা
-timeout 3 bash -c 'cat < /dev/null > /dev/tcp/192.168.1.100/4370' && echo "Open" || echo "Closed"
 ```
 
-Windows:
-```cmd
-# PowerShell
+```powershell
+# Windows PowerShell
 Test-NetConnection -ComputerName 192.168.1.100 -Port 4370
 ```
 
----
+### নেটওয়ার্কের সব ZKTeco ডিভাইস খুঁজুন
 
-### Network-এ সব Active Machine খুঁজে বের করুন
+**Linux — nmap:**
 
-**Linux — nmap দিয়ে (সবচেয়ে ভালো):**
 ```bash
-# ইনস্টল না থাকলে
 sudo apt install nmap -y
-
-# পুরো subnet scan করুন (আপনার subnet অনুযায়ী বদলান)
-sudo nmap -sn 192.168.1.0/24
-
-# শুধু ZKTeco-র common port (4370) চালু এমন machine খুঁজুন
-sudo nmap -p 4370 192.168.1.0/24 --open
+sudo nmap -p 4370 192.168.1.0/24 --open     # শুধু 4370 পোর্ট খোলা এমন যন্ত্র
+sudo nmap -sn 192.168.1.0/24                # নেটওয়ার্কের সব চালু যন্ত্র
 ```
 
-**Linux — arp-scan দিয়ে (দ্রুত):**
+**Linux — arp-scan (দ্রুত):**
+
 ```bash
 sudo apt install arp-scan -y
 sudo arp-scan --localnet
 ```
 
-**Linux — ping sweep (nmap ছাড়া):**
-```bash
-for i in $(seq 1 254); do
-  ping -c 1 -W 1 192.168.1.$i &>/dev/null && echo "192.168.1.$i is UP" &
-done
-wait
-```
-
 **Windows — PowerShell:**
+
 ```powershell
 1..254 | ForEach-Object {
   $ip = "192.168.1.$_"
-  if (Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue) {
-    Write-Host "$ip is UP"
-  }
+  if (Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue) { Write-Host "$ip is UP" }
 }
+arp -a     # সংযুক্ত যন্ত্রের তালিকা
 ```
 
-**Windows — arp table দেখুন (connected device):**
-```cmd
-arp -a
-```
+> `192.168.1` অংশটা আপনার নেটওয়ার্ক অনুযায়ী বদলে নিন।
 
 ---
 
-## Environment Variables (Optional)
+## ৭. .env সেটিংস
 
-Project folder-এ `.env` file তৈরি করুন:
+`npm install` নিজে থেকেই `.env` তৈরি করে। প্রধান মানগুলো:
 
 ```env
-PORT=3000
-ADMS_PORT=5015
-SESSION_SECRET=your-secret-key-here
-MASTER_USERNAME=superadmin
-MASTER_PASSWORD=your-password-here
+PORT=3000                 # ওয়েব ড্যাশবোর্ড
+HOST=0.0.0.0              # 127.0.0.1 দিলে শুধু এই কম্পিউটার থেকে খোলা যাবে
+ADMS_PORT=7788            # ADMS ডিভাইস এই পোর্টে পাঠায়
+LARAVEL_API_URL=          # ERP API বেস URL (সেটিংস থেকেও দেওয়া যায়)
+LARAVEL_API_TOKEN=
+ATTENDANCE_RETENTION_DAYS=90
+MASTER_USERNAME=          # জরুরি লগইন — পাসওয়ার্ড ভুলে গেলে
+MASTER_PASSWORD=
 ```
+
+হাতে `.env` বদলালে ব্রিজ রিস্টার্ট দিন। সব key-র তালিকা: [README.md](README.md#configuration-env)।
+
+**অ্যাডমিন পাসওয়ার্ড ভুলে গেলে:**
+
+1. `.env`-এ `MASTER_USERNAME` আর `MASTER_PASSWORD` দিয়ে রিস্টার্ট করুন।
+2. সেগুলো দিয়ে লগইন করে **প্রশাসন → ইউজার ও রোল** থেকে পাসওয়ার্ড বদলান।
+3. তারপর দুটো মান আবার মুছে দিন।
 
 ---
 
-## Server Restart করুন
+## ৮. ব্যাকআপ ও আপডেট
+
+সব ডেটা থাকে `data/` ফোল্ডারে (হাজিরা, কর্মী, TCP ডিভাইস, ইউজার, সেটিংস), আর সংযোগের সেটিং থাকে `.env`-এ।
+**ব্যাকআপ = এই দুটো কপি করে রাখা।**
+
+`data/` আর `.env` git-এ ignore করা, তাই `git pull` এগুলো কখনো বদলায় না।
 
 ```bash
-# Restart (config/code change-এর পর)
-pm2 restart zk-bridge
+# ১. ব্যাকআপ (ঐচ্ছিক কিন্তু ভালো)
+cp -r data data-backup-$(date +%F) && cp .env .env.backup
 
-# Stop করুন
-pm2 stop zk-bridge
+# ২. নতুন কোড
+git pull origin master
+npm install
 
-# Start করুন (stop-এর পর)
-pm2 start zk-bridge
-
-# Force kill করে fresh start
-pm2 delete zk-bridge
-pm2 start src/server.js --name zk-bridge
-pm2 save
-
-# Restart করে live log দেখুন
-pm2 restart zk-bridge && pm2 logs zk-bridge
+# ৩. রিস্টার্ট (যেভাবে চালাচ্ছেন সেভাবে)
+sudo systemctl restart attendbridge    # service হলে
+pm2 restart attendbridge               # PM2 হলে
+./start.sh                             # script হলে
 ```
 
-**Windows-এ একই command কাজ করে।**
+Windows-এ zip থেকে আপডেট করলে:
+
+1. `stop.bat` দিয়ে বন্ধ করুন (বা service বন্ধ করুন)।
+2. নতুন ফাইলগুলো পুরোনো ফোল্ডারে কপি করুন, `.env` আর `data/` রেখে।
+3. `npm install` চালান।
+4. আবার চালু করুন।
 
 ---
 
-## Git Pull (data/ skip করে)
-
-`data/` folder-এ employees, config, permissions সব থাকে — pull-এ overwrite হলে সব মুছে যাবে।
-
-### Linux
+## ৯. দ্রুত সারসংক্ষেপ
 
 ```bash
-git stash && git pull origin master && git checkout stash@{0} -- data/ && git stash drop
-```
-
-একলাইনে কী হচ্ছে:
-1. `git stash` — data/ সহ সব local change সরিয়ে রাখে
-2. `git pull origin master` — latest code নামায়
-3. `git checkout stash@{0} -- data/` — stash থেকে শুধু data/ ফিরিয়ে আনে
-4. `git stash drop` — stash মুছে দেয়
-
-### Windows (Command Prompt / PowerShell)
-
-```cmd
-git stash && git pull origin master && git checkout stash@{0} -- data/ && git stash drop
-```
-
-Windows-এও একই command কাজ করে।
-
-### Pull-এর পর সবসময় করুন
-
-```bash
-# নতুন dependency থাকতে পারে
-npm install
-
-# Server restart করুন
-pm2 restart zk-bridge
-```
-
----
-
-## Quick Start Summary
-
-```bash
-# ১. Install
-npm install
-npm install -g pm2
-
-# ২. Start
-pm2 start src/server.js --name zk-bridge
-
-# ৩. Auto-start on boot
-pm2 startup   # দেওয়া command run করুন
-pm2 save
-
-# ৪. Browser-এ খুলুন
-# http://localhost:3000
-# অথবা same network থেকে: http://192.168.x.x:3000
-
-# ৫. Server restart করুন
-pm2 restart zk-bridge
-
-# ৬. Code update (data/ নষ্ট না করে)
-git stash && git pull origin master && git checkout stash@{0} -- data/ && git stash drop
-npm install
-pm2 restart zk-bridge
+npm install                 # ১. ইনস্টল
+npm start                   # ২. চালু → http://localhost:3000 → সেটআপ উইজার্ড
+./install-service.sh        # ৩. বুট হলে নিজে থেকে চালু (Windows: install-service.bat)
+sudo ufw allow 3000/tcp     # ৪. ফায়ারওয়াল
+sudo ufw allow 7788/tcp
+git pull && npm install     # ৫. আপডেট, তারপর রিস্টার্ট
 ```
 
 ---
