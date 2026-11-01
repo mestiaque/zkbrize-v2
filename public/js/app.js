@@ -358,7 +358,7 @@ function renderAttendanceTable() {
   const allDevices = [...new Set(records.map(r => r.deviceId))];
   const curDev = sel.value;
   sel.innerHTML = '<option value="">All Devices</option>' +
-    allDevices.map(d => `<option value="${d}" ${d===curDev?'selected':''}>${d.slice(-8)}</option>`).join('');
+    allDevices.map(d => `<option value="${escAttr(d)}" ${d===curDev?'selected':''}>${escAttr(deviceLabel(d))}</option>`).join('');
 
   // Apply filters
   const empFilter    = (val('filter-empid') || '').toLowerCase();
@@ -403,11 +403,17 @@ function renderAttendanceTable() {
       <td style="font-size:12px">${r.time}</td>
       <td><span class="tag ${r.status==='1'?'tag-amber':'tag-green'}">${r.status==='1'?'Check Out':'Check In'}</span></td>
       <td>${verifyLabel(r.verify)}</td>
-      <td style="font-size:11px;font-family:monospace">${(r.deviceId||'').slice(-8)}</td>
+      <td style="font-size:12px" title="${escAttr(r.deviceId || '')}">${escAttr(deviceLabel(r.deviceId))}</td>
       <td><span class="tag ${r.source==='adms'?'tag-blue':'tag-amber'}">${r.source||'—'}</span></td>
       <td style="color:var(--text-3);font-size:11px">${r.pushedAt ? formatTime(r.pushedAt) : '—'}</td>
     </tr>`;
   }).join('');
+}
+
+// Device name for a record's deviceId; the ID itself when the device is unknown
+function deviceLabel(id) {
+  const d = (state.devices || []).find(x => x.id === id);
+  return (d && d.name) || id || '—';
 }
 
 function filterAttendance() { renderAttendanceTable(); }
