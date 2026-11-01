@@ -226,22 +226,28 @@ function renderDeviceList() {
       <thead><tr>
         <th>Type</th><th>Name</th><th>IP / SN</th><th>Status</th><th>Records</th><th>Last Seen</th><th>Actions</th>
       </tr></thead>
-      <tbody>${devices.map(d => `
+      <tbody>${devices.map(d => {
+        // Device names, IPs and serials come from the network; never insert them as HTML
+        const t = v => escAttr(v ?? '');
+        const id = t(d.id);
+        return `
         <tr>
-          <td><span class="tag ${d.type==='adms'?'tag-blue':'tag-amber'}">${d.type.toUpperCase()}</span></td>
-          <td><strong>${d.name}</strong></td>
-          <td style="font-family:monospace;font-size:12px">${d.ip||'—'} ${d.port?':'+d.port:''}<br><span style="color:var(--text-3)">${d.sn||d.id}</span></td>
-          <td><span class="tag ${d.status==='connected'?'tag-green':d.status==='error'?'tag-red':''}">${d.status}</span></td>
-          <td>${d.attendancePushed||0}</td>
+          <td><span class="tag ${d.type==='adms'?'tag-blue':'tag-amber'}">${t(String(d.type).toUpperCase())}</span></td>
+          <td><strong>${t(d.name)}</strong></td>
+          <td style="font-family:monospace;font-size:12px">${t(d.ip||'—')} ${d.port?':'+t(d.port):''}<br><span style="color:var(--text-3)">${t(d.sn||d.id)}</span></td>
+          <td><span class="tag ${d.status==='connected'?'tag-green':d.status==='error'?'tag-red':''}" title="${t(d.error)}">${t(d.status)}</span></td>
+          <td>${t(d.attendancePushed||0)}</td>
           <td>${d.lastSeen ? timeAgo(d.lastSeen) : '—'}</td>
           <td>
             <div class="device-actions">
-              ${d.type==='tcp'?`<button class="btn-sm" onclick="fetchFromDevice('${d.id}')">Fetch</button>`:''}
-              <button class="btn-sm" onclick="syncEmpToDevice('${d.id}')">Sync Emp</button>
-              ${d.type==='tcp'?`<button class="btn-sm" style="color:var(--red)" onclick="disconnectDevice('${d.id}')">Disconnect</button>`:''}
+              ${d.type==='tcp'?`<button class="btn-sm" data-id="${id}" onclick="fetchFromDevice(this.dataset.id)">Fetch</button>`:''}
+              <button class="btn-sm" data-id="${id}" onclick="syncEmpToDevice(this.dataset.id)">Sync Emp</button>
+              ${d.type==='tcp'?`<button class="btn-sm" data-id="${id}" onclick="openEditDevice(this.dataset.id)">Edit</button>`:''}
+              ${d.type==='tcp'?`<button class="btn-sm" style="color:var(--red)" data-id="${id}" onclick="disconnectDevice(this.dataset.id)">Disconnect</button>`:''}
             </div>
           </td>
-        </tr>`).join('')}
+        </tr>`;
+      }).join('')}
       </tbody>
     </table>`;
 }
@@ -255,8 +261,44 @@ async function connectTCPDevice() {
 
   toast('Connecting to device...', 'info');
   const res = await api('/devices/tcp/connect', { ip, port: parseInt(port), name, password });
-  if (res?.success) toast(`Device connected: ${res.deviceId}`, 'success');
+  if (res?.success && res.matched) toast(`Same device as ${res.deviceId} (serial number) — updated its address`, 'success');
+  else if (res?.success) toast(`Device connected: ${res.deviceId}`, 'success');
   else toast(`Connection failed: ${res?.error || 'Unknown error'}`, 'error');
+  fetchState();
+}
+
+// Edit a TCP device (new IP after a DHCP change, etc.); its ID and records stay
+let editingDeviceId = null;
+function openEditDevice(deviceId) {
+  const d = (state.devices || []).find(x => x.id === deviceId);
+  if (!d) return;
+  editingDeviceId = deviceId;
+  document.getElementById('dev-modal-ip').value = d.ip || '';
+  document.getElementById('dev-modal-port').value = d.port || 4370;
+  document.getElementById('dev-modal-name').value = d.name || '';
+  document.getElementById('dev-modal-password').value = '';
+  document.getElementById('dev-modal-error').style.display = 'none';
+  document.getElementById('modal-device').style.display = 'flex';
+}
+
+async function saveDevice() {
+  const errEl = document.getElementById('dev-modal-error');
+  const ip = document.getElementById('dev-modal-ip').value.trim();
+  const port = parseInt(document.getElementById('dev-modal-port').value) || 4370;
+  const name = document.getElementById('dev-modal-name').value.trim();
+  const password = document.getElementById('dev-modal-password').value.trim();
+  if (!ip) { errEl.textContent = 'Enter device IP address'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  toast('Connecting to device...', 'info');
+  const res = await api('/devices/tcp/update', { deviceId: editingDeviceId, ip, port, name, password });
+  if (res?.success) {
+    closeModal('modal-device');
+    toast(`Device updated: ${res.deviceId}`, 'success');
+  } else {
+    // Saved anyway; it is retried on the next sync
+    errEl.textContent = `Saved, but could not connect: ${res?.error || 'Unknown error'}`;
+    errEl.style.display = 'block';
+  }
   fetchState();
 }
 
@@ -386,9 +428,10 @@ async function fetchAttendance() {
   if (btn) { btn.disabled = true; btn.textContent = 'Fetching...'; }
   const rangeMsg = fromDate ? ` (${fromDate}${toDate ? ' → ' + toDate : ''})` : '';
   toast('Fetching from TCP devices' + rangeMsg + '...', 'info');
-  const tcpDevices = (state.devices || []).filter(d => d.type === 'tcp' && d.status === 'connected');
+  // Devices in "error" are retried too: every fetch opens a new session
+  const tcpDevices = (state.devices || []).filter(d => d.type === 'tcp' && d.status !== 'disconnected');
   if (!tcpDevices.length) {
-    toast('No connected TCP devices found', 'error');
+    toast('No TCP devices added', 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Fetch TCP'; }
     return;
   }
@@ -1126,6 +1169,7 @@ function verifyLabel(v) {
   return `<span class="tag ${cls}">${label}</span>`;
 }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(v) { return escHtml(String(v)).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function timeAgo(iso) {
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (diff < 60) return `${diff}s ago`;

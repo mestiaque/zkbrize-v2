@@ -18,7 +18,7 @@ const branding = require('./branding');
 const { setEnvValues } = require('./envfile');
 const { onShutdown, closeAll } = require('./restart');
 const { startADMSServer, stopADMSServer, setSocketIO: admsSetIO } = require('./adms/server');
-const { setSocketIO: tcpSetIO, disconnectAllTCP } = require('./tcpip/connector');
+const { setSocketIO: tcpSetIO, disconnectAllTCP, restoreTCPDevices } = require('./tcpip/connector');
 const { startScheduler, setSocketIO: schedSetIO } = require('./scheduler');
 
 // Settings: data/config.json first, then .env on top (.env is the source of truth;
@@ -146,6 +146,7 @@ io.on('connection', (socket) => {
 startADMSServer(store.config.admsPort);
 logger.info(`ADMS server started on port ${store.config.admsPort}`);
 startScheduler();
+restoreTCPDevices().catch(e => logger.error('TCP device restore failed: ' + e.message));
 
 const G = '\x1b[32m', R = '\x1b[0m';
 function printBanner() {

@@ -77,7 +77,8 @@ async function runEmployeeSync() {
     } else if (device.type === 'tcp') {
       try {
         const r = await syncEmployeesToTCP(device.id, unsynced);
-        if (r.success) markEmployeesSynced(unsynced.map(e => String(e.uid)));
+        // Only the employees the device accepted; the rest are retried next sync
+        if (r.syncedUids?.length) markEmployeesSynced(r.syncedUids);
         logger.info(`Schedule: TCP ${device.id} synced ${r.synced || 0} employees`);
       } catch (e) {
         logger.warn(`Schedule: TCP ${device.id} push failed: ${e.message}`);

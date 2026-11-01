@@ -5,7 +5,7 @@ const cron = require('node-cron');
 const { exec } = require('child_process');
 const { store, getState, clearLogs, upsertEmployee, deleteEmployee, markAttendancePushed, markEmployeesSynced, savePermissions, DEFAULT_PERMISSIONS, saveConfigFile } = require('./store');
 const { testConnection, fetchEmployees, pushAttendance } = require('./laravel/api');
-const { connectTCPDevice, fetchAttendanceFromTCP, fetchAllTCP, disconnectTCPDevice, syncEmployeesToTCP, getEmployeesFromDevice, setEmployeeOnDevice, deleteEmployeeFromDevice } = require('./tcpip/connector');
+const { connectTCPDevice, updateTCPDevice, fetchAttendanceFromTCP, fetchAllTCP, disconnectTCPDevice, syncEmployeesToTCP, getEmployeesFromDevice, setEmployeeOnDevice, deleteEmployeeFromDevice } = require('./tcpip/connector');
 const { requestSetUserOnADMS, requestDeleteUserOnADMS, requestUsersFromADMS, requestAttLogsFromADMS, pendingOptionPush, restartADMSServer, deviceUserCache } = require('./adms/server');
 const { updateSchedule, getSchedulerStatus } = require('./scheduler');
 const logger = require('./logger');
@@ -310,12 +310,32 @@ router.get('/devices/ping', requirePerm('devices.card_ping_test'), (req, res) =>
   });
 });
 
-router.post('/devices/tcp/connect', requirePerm('devices.card_add_tcp'), async (req, res) => {
-  const { ip, port, name, password } = req.body;
-  if (!ip) return res.status(400).json({ error: 'IP address required' });
+// Checks the TCP device form; returns an error message or the cleaned values
+function tcpDeviceInput({ ip, port, name, password }) {
+  if (!ip) return { error: 'IP address required' };
+  if (!/^[A-Za-z0-9.-]{1,253}$/.test(String(ip).trim())) return { error: 'Invalid IP address or host name' };
+  const portNum = parseInt(port, 10) || 4370;
+  if (portNum < 1 || portNum > 65535) return { error: 'Port must be 1-65535' };
+  if (password && !/^\d{1,10}$/.test(String(password).trim())) return { error: 'Comm key must be a number' };
+  return {
+    value: { ip: String(ip).trim(), port: portNum, name: String(name || '').trim().slice(0, 64), password: String(password || '').trim() },
+  };
+}
 
-  const result = await connectTCPDevice({ ip, port: port || 4370, name, password });
-  res.json(result);
+router.post('/devices/tcp/connect', requirePerm('devices.card_add_tcp'), async (req, res) => {
+  const input = tcpDeviceInput(req.body);
+  if (input.error) return res.status(400).json({ error: input.error });
+  res.json(await connectTCPDevice(input.value));
+});
+
+// New IP / port / name / comm key for a TCP device; its ID and records stay
+router.post('/devices/tcp/update', requirePerm('devices.card_add_tcp'), async (req, res) => {
+  const { deviceId } = req.body;
+  const device = store.devices[deviceId];
+  if (!device || device.type !== 'tcp') return res.status(404).json({ error: 'Device not found' });
+  const input = tcpDeviceInput(req.body);
+  if (input.error) return res.status(400).json({ error: input.error });
+  res.json(await updateTCPDevice(deviceId, input.value));
 });
 
 router.post('/devices/tcp/disconnect', requirePerm('devices.card_add_tcp'), async (req, res) => {
@@ -367,7 +387,8 @@ router.post('/employees/push-to-devices', requirePerm('employees.btn_set_device'
     } else if (d.type === 'tcp') {
       try {
         const r = await syncEmployeesToTCP(d.id, unsynced);
-        if (r.success) markEmployeesSynced(unsynced.map(e => String(e.uid)));
+        // Only the employees the device accepted; the rest are retried next sync
+        if (r.syncedUids?.length) markEmployeesSynced(r.syncedUids);
         results.push({ deviceId: d.id, type: 'tcp', ...r });
       } catch (e) {
         results.push({ deviceId: d.id, type: 'tcp', success: false, error: e.message });

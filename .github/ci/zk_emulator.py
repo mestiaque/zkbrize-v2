@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """Minimal ZKTeco TCP device emulator (port 4370 protocol) used by CI to test the
-bridge's TCP/IP connector. Follows the real wire format (TCP wrapper, 40-byte
-attendance and 72-byte user records, comm-key auth); real devices remain the final test.
+bridge's TCP/IP connector. Follows the real wire format (TCP wrapper, comm-key
+auth, free-sizes, buffered reads that arrive in chunks split across TCP segments,
+40/16/8-byte attendance and 72/28-byte user records); real devices remain the final test.
 
-Usage: zk_emulator.py PORT [COMMKEY] [IDLE_CLOSE_SECONDS]
+Usage: zk_emulator.py PORT [COMMKEY] [IDLE_CLOSE_SECONDS] [RECORD_SIZE] [EXTRA_RECORDS]
+  RECORD_SIZE    40 (default), 16, or 8 (8 also uses 28-byte user records)
+  EXTRA_RECORDS  extra old punches, to make the log big enough to need chunked reads
 """
-import socket, struct, sys, threading, time, datetime
+import os, socket, struct, sys, threading, time, datetime
 
 PORT = int(sys.argv[1])
 COMMKEY = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] != '0' else 0
 IDLE_CLOSE = float(sys.argv[3]) if len(sys.argv) > 3 else 0
+RECORD_SIZE = int(sys.argv[4]) if len(sys.argv) > 4 else 40
+EXTRA_RECORDS = int(sys.argv[5]) if len(sys.argv) > 5 else 0
+USER_SIZE = 28 if RECORD_SIZE == 8 else 72
+# Each device has its own serial; ZK_EMU_SERIAL lets a test move "one device" to another port
+SERIAL = os.environ.get('ZK_EMU_SERIAL') or f'EMU{PORT}TCP01'
 
 CMD_CONNECT, CMD_EXIT, CMD_AUTH = 1000, 1001, 1102
 CMD_ACK_OK, CMD_ACK_ERROR, CMD_ACK_UNAUTH = 2000, 2001, 2005
-CMD_DATA, CMD_FREE_DATA, CMD_DATA_WRRQ = 1501, 1502, 1503
-CMD_OPTIONS_RRQ, CMD_VERSION = 11, 1100
+CMD_PREPARE_DATA, CMD_DATA, CMD_FREE_DATA, CMD_DATA_WRRQ, CMD_READ_BUFFER = 1500, 1501, 1502, 1503, 1504
+CMD_OPTIONS_RRQ, CMD_VERSION, CMD_GET_FREE_SIZES = 11, 1100, 50
+SMALL_DATA = 1024  # larger answers go through the chunked path, as on real devices
 CMD_USER_WRQ, CMD_DELETE_USER, CMD_REFRESHDATA = 8, 18, 1013
 USHRT_MAX = 65535
 SESSION = 0x4D2
@@ -31,6 +40,8 @@ attendance = [
     (1, '1001', 1, datetime.datetime(today.year, today.month, today.day, 17, 5, 2), 1),
     (2, '1002', 3, datetime.datetime(2026, 1, 5, 9, 0, 0), 0),
 ]
+for i in range(EXTRA_RECORDS):
+    attendance.append((1, '1001', 1, datetime.datetime(2025, 1, 1) + datetime.timedelta(minutes=i), i % 2))
 
 
 def make_commkey(key, session_id, ticks=50):
@@ -72,22 +83,45 @@ def encode_time(t):
 def att_blob():
     recs = b''
     for uid, user_id, verify, t, punch in attendance:
-        recs += struct.pack('<H24sBIB8s', uid, user_id.encode(), verify, encode_time(t), punch, b'')
+        if RECORD_SIZE == 8:
+            recs += struct.pack('<HBIB', uid, verify, encode_time(t), punch)
+        elif RECORD_SIZE == 16:
+            recs += struct.pack('<IIBB2sI', int(user_id), encode_time(t), verify, punch, b'', 0)
+        else:
+            recs += struct.pack('<H24sBIB8s', uid, user_id.encode(), verify, encode_time(t), punch, b'')
     return struct.pack('<I', len(recs)) + recs
 
 
 def users_blob():
     recs = b''
     for u in users.values():
-        recs += struct.pack('<HB8s24sIx7sx24s', u['uid'], u['priv'], u['password'].encode(),
-                            u['name'].encode(), u['card'], b'1', u['user_id'].encode())
+        if USER_SIZE == 28:
+            recs += struct.pack('<HB5s8sIxBhI', u['uid'], u['priv'], u['password'].encode(),
+                                u['name'].encode()[:8], u['card'], 1, 0, int(u['user_id']))
+        else:
+            recs += struct.pack('<HB8s24sIx7sx24s', u['uid'], u['priv'], u['password'].encode(),
+                                u['name'].encode(), u['card'], b'1', u['user_id'].encode())
     return struct.pack('<I', len(recs)) + recs
+
+
+def free_sizes():
+    fields = [0] * 20
+    fields[4], fields[8] = len(users), len(attendance)
+    return struct.pack('<20i', *fields)
+
+
+def send_split(conn, data, piece=1000):
+    """Send in small writes so the client sees packets split across TCP segments."""
+    for i in range(0, len(data), piece):
+        conn.sendall(data[i:i + piece])
+        time.sleep(0.001)
 
 
 def handle(conn, addr):
     authed = COMMKEY == 0
     conn.settimeout(IDLE_CLOSE or None)
     buf = b''
+    pending = b''  # data prepared by CMD_DATA_WRRQ, read with CMD_READ_BUFFER
     try:
         while True:
             try:
@@ -124,13 +158,37 @@ def handle(conn, addr):
                 elif cmd == CMD_DATA_WRRQ:
                     what = data[1] if len(data) > 1 else 0
                     blob = att_blob() if what == 0x0d else users_blob()
-                    reply = packet(CMD_DATA, reply_id, blob)
+                    if len(blob) <= SMALL_DATA:
+                        reply = packet(CMD_DATA, reply_id, blob)
+                    else:
+                        pending = blob
+                        reply = packet(CMD_ACK_OK, reply_id, b'\0' + struct.pack('<I', len(blob)) + b'\0' * 4)
+                elif cmd == CMD_READ_BUFFER:
+                    start, size = struct.unpack('<ii', data[:8])
+                    chunk = pending[start:start + size]
+                    out = packet(CMD_PREPARE_DATA, reply_id, struct.pack('<I', len(chunk)) + b'\0' * 4)
+                    # One CMD_DATA per chunk, as real devices send (and pyzk expects);
+                    # send_split still delivers it across many TCP segments
+                    out += packet(CMD_DATA, reply_id, chunk)
+                    out += packet(CMD_ACK_OK, reply_id)
+                    send_split(conn, out)
+                    print(f'[emu] READ_BUFFER {start}+{size}', flush=True)
+                    continue
+                elif cmd == CMD_GET_FREE_SIZES:
+                    reply = packet(CMD_ACK_OK, reply_id, free_sizes())
                 elif cmd == CMD_OPTIONS_RRQ:
                     key = data.split(b'\0')[0].decode()
-                    val = {'~SerialNumber': 'EMU4370TCP01', '~DeviceName': 'K40 Emulator'}.get(key, '')
+                    val = {'~SerialNumber': SERIAL, '~DeviceName': 'K40 Emulator'}.get(key, '')
                     reply = packet(CMD_ACK_OK, reply_id, f'{key}={val}\0'.encode())
                 elif cmd == CMD_VERSION:
                     reply = packet(CMD_ACK_OK, reply_id, b'Ver 6.60 Emu\0')
+                elif cmd == CMD_USER_WRQ and USER_SIZE == 28:
+                    uid, priv, pw, name, card, grp, tz, user_id = struct.unpack('<HB5s8sIxBhI', data[:28])
+                    users[uid] = dict(uid=uid, priv=priv, password=pw.split(b'\0')[0].decode(),
+                                      name=name.split(b'\0')[0].decode('utf8', 'replace'), card=card,
+                                      user_id=str(user_id))
+                    print(f'[emu] USER_WRQ(28) uid={uid} id={user_id} name={users[uid]["name"]!r} priv={priv}', flush=True)
+                    reply = packet(CMD_ACK_OK, reply_id)
                 elif cmd == CMD_USER_WRQ:
                     uid, priv, pw, name, card, grp, user_id = struct.unpack('<HB8s24sIx7sx24s', data[:72])
                     users[uid] = dict(uid=uid, priv=priv, password=pw.split(b'\0')[0].decode(),
@@ -154,7 +212,8 @@ def main():
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(('127.0.0.1', PORT)); srv.listen(5)
-    print(f'[emu] listening on {PORT} commkey={COMMKEY or "none"} idle_close={IDLE_CLOSE or "never"}', flush=True)
+    print(f'[emu] listening on {PORT} commkey={COMMKEY or "none"} idle_close={IDLE_CLOSE or "never"} '
+          f'records={RECORD_SIZE}B x{len(attendance)} users={USER_SIZE}B', flush=True)
     while True:
         conn, addr = srv.accept()
         threading.Thread(target=handle, args=(conn, addr), daemon=True).start()
